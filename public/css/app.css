@@ -179,3 +179,17 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var
 .user-actions select{flex:1;min-width:0}
 .user-delete{color:#853c2e}
 @media(max-width:600px){.user-actions{flex-direction:column}.user-actions button{width:100%}}
+
+.profile>.user-management{max-width:none;margin:0}
+.telegram-card{display:grid;gap:16px}
+.telegram-card>h2,.telegram-card p{margin:0}
+.telegram-card .user-actions{align-items:center}
+.telegram-help{border-top:1px solid var(--line);padding-top:16px;min-width:0}
+.telegram-help>summary{cursor:pointer;font-size:13px;font-weight:600;min-height:44px;display:flex;align-items:center;gap:8px}
+.telegram-help>summary::before{content:"+";font-size:20px}
+.telegram-help[open]>summary::before{content:"−"}
+.telegram-help>summary::-webkit-details-marker{display:none}
+.telegram-help p{margin:12px 0}
+.telegram-help h3{font-size:14px;margin:16px 0 8px}
+.telegram-help pre{margin:0;padding:16px;background:var(--paper);border-radius:8px;font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere}
+@media(max-width:600px){.telegram-card .user-actions{align-items:stretch}.telegram-card .user-actions form,.telegram-card .user-actions button{width:100%}}

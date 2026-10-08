@@ -118,6 +118,71 @@ class TelegramTest extends TestCase
         Queue::assertPushed(ProcessTelegramUpdate::class, 2);
     }
 
+    public function test_super_user_sees_connected_people_and_can_revoke_a_link(): void
+    {
+        $otherUserId = '44444444-4444-4444-8444-444444444444';
+        $this->fakeNetwork('Super_user');
+        $this->sessionAccount();
+        Http::fake(['https://project.supabase.co/auth/v1/admin/users?*' => Http::response(['users' => [
+            ['id' => $otherUserId, 'email' => 'persona@example.com', 'app_metadata' => ['role' => 'amministratore'], 'user_metadata' => ['name' => 'Mario', 'surname' => 'Rossi']],
+        ]])]);
+        $id = DB::table('telegram_accounts')->insertGetId([
+            'user_id' => $otherUserId, 'telegram_id' => '12345',
+            'link_hash' => hash('sha256', str_repeat('a', 48)), 'link_expires_at' => now()->addMinutes(10),
+            'draft' => Crypt::encryptString('{}'), 'draft_expires_at' => now()->addDay(),
+        ]);
+        DB::table('telegram_accounts')->insert(['user_id' => '22222222-2222-4222-8222-222222222222', 'telegram_id' => '67890']);
+        DB::table('telegram_accounts')->insert(['user_id' => '33333333-3333-4333-8333-333333333333']);
+
+        $this->get('/profilo')->assertOk()->assertSee('Account collegati a Telegram')
+            ->assertSee('Mario Rossi')->assertSee('persona@example.com')->assertSee('Telegram ID: 12345')
+            ->assertSee('Telegram ID: 67890')->assertViewHas('linkedTelegramAccounts', fn ($accounts) => $accounts->count() === 2);
+        $this->delete('/profilo/telegram/'.$id)->assertRedirect('/profilo')->assertSessionHas('status', 'Collegamento Telegram revocato.');
+        $this->assertDatabaseMissing('telegram_accounts', ['id' => $id]);
+        $this->assertDatabaseHas('telegram_accounts', ['telegram_id' => '67890']);
+        $this->deliver(['text' => '/start '.str_repeat('a', 48)]);
+        $this->assertReplyContains('scaduto o già utilizzato');
+        $this->deliver(['text' => '/start']);
+        $this->assertReplyContains('Collega prima Telegram');
+    }
+
+    #[TestWith(['amministratore'])]
+    #[TestWith(['condomino'])]
+    public function test_other_roles_cannot_see_or_revoke_telegram_connections(string $role): void
+    {
+        $this->fakeNetwork($role);
+        $this->sessionAccount();
+        $this->linkedAccount();
+        $id = DB::table('telegram_accounts')->value('id');
+
+        $this->get('/profilo')->assertOk()->assertDontSee('Account collegati a Telegram')
+            ->assertViewHas('linkedTelegramAccounts', fn ($accounts) => $accounts->isEmpty());
+        $this->delete('/profilo/telegram/'.$id)->assertForbidden();
+        $this->assertDatabaseHas('telegram_accounts', ['id' => $id, 'telegram_id' => '12345']);
+    }
+
+    public function test_guests_cannot_revoke_connections_and_missing_connections_return_404(): void
+    {
+        $this->linkedAccount();
+        $id = DB::table('telegram_accounts')->value('id');
+        $this->delete('/profilo/telegram/'.$id)->assertRedirect('/');
+        $this->assertDatabaseHas('telegram_accounts', ['id' => $id]);
+        $this->fakeNetwork('Super_user');
+        $this->sessionAccount();
+
+        $this->delete('/profilo/telegram/99999')->assertNotFound();
+        $this->assertDatabaseHas('telegram_accounts', ['id' => $id]);
+    }
+
+    public function test_super_user_sees_empty_telegram_connections_message(): void
+    {
+        $this->fakeNetwork('Super_user');
+        $this->sessionAccount();
+        Http::fake(['https://project.supabase.co/auth/v1/admin/users?*' => Http::response(['users' => []])]);
+
+        $this->get('/profilo')->assertOk()->assertSee('Nessun account collegato a Telegram.');
+    }
+
     public function test_expired_link_does_not_connect_an_account(): void
     {
         $this->freezeTime();

@@ -21,6 +21,9 @@ class TelegramController extends Controller
             'enabledUsers' => $request->user()->role === 'Super_user' ? $supabase->enabledUsers() : [],
             'telegramConfigured' => $telegram->configured(),
             'telegramAccount' => DB::table('telegram_accounts')->where('user_id', $request->user()->id)->first(),
+            'linkedTelegramAccounts' => $request->user()->role === 'Super_user'
+                ? DB::table('telegram_accounts')->select('id', 'user_id', 'telegram_id')->whereNotNull('telegram_id')->orderBy('id')->get()
+                : collect(),
         ]);
     }
 
@@ -48,6 +51,19 @@ class TelegramController extends Controller
         });
 
         return to_route('profile')->with('status', 'Account Telegram scollegato.');
+    }
+
+    public function revoke(Request $request, int $id): RedirectResponse
+    {
+        abort_unless($request->user()->role === 'Super_user', 403);
+
+        DB::transaction(function () use ($id): void {
+            $account = DB::table('telegram_accounts')->where('id', $id)->lockForUpdate()->first();
+            abort_unless($account, 404);
+            DB::table('telegram_accounts')->where('id', $account->id)->delete();
+        });
+
+        return to_route('profile')->with('status', 'Collegamento Telegram revocato.');
     }
 
     public function webhook(Request $request, Telegram $telegram): JsonResponse

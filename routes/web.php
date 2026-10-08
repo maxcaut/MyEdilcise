@@ -18,6 +18,7 @@ Route::middleware(SupabaseSession::class)->group(function (): void {
     Route::get('/profilo', [TelegramController::class, 'profile'])->name('profile');
     Route::post('/profilo/telegram', [TelegramController::class, 'store'])->middleware('throttle:5,1')->name('profile.telegram.store');
     Route::delete('/profilo/telegram', [TelegramController::class, 'destroy'])->name('profile.telegram.destroy');
+    Route::delete('/profilo/telegram/{id}', [TelegramController::class, 'revoke'])->whereNumber('id')->name('profile.telegram.revoke');
     Route::post('/profilo', [AuthController::class, 'updateProfile'])->name('profile.update');
     Route::post('/profilo/password', [AuthController::class, 'updatePassword'])->middleware('throttle:5,1')->name('profile.password');
     Route::post('/utenti', [AuthController::class, 'createUser'])->middleware('throttle:10,1')->name('users.store');
