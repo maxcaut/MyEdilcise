@@ -45,6 +45,7 @@ class SupabaseAccessTest extends TestCase
     {
         Http::fake(['https://project.supabase.co/auth/v1/token?grant_type=password' => Http::sequence()->push([
             'access_token' => 'new-token', 'refresh_token' => 'new-refresh', 'expires_in' => 3600,
+            'user' => ['id' => '11111111-1111-4111-8111-111111111111'],
         ])->push([], 400)]);
         $this->post('/login', ['email' => 'test@example.com', 'password' => 'secret'])
             ->assertRedirect('/dashboard')->assertSessionHas('supabase.access_token', 'new-token');

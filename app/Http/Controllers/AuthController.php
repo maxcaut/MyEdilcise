@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Supabase;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -20,8 +22,13 @@ class AuthController extends Controller
             throw ValidationException::withMessages(['email' => 'Credenziali non valide o account non confermato.']);
         }
         $response->throw();
+        $userId = $response->json('user.id');
+        abort_unless(is_string($userId) && $userId !== '', 502, 'Risposta Supabase non valida.');
         $request->session()->regenerate();
         $this->supabase->storeSession($response->json());
+        $sessionToken = (string) Str::uuid();
+        Cache::forever('supabase.active_session.'.$userId, $sessionToken);
+        $request->session()->put('supabase_session_token', $sessionToken);
 
         return to_route('dashboard');
     }
