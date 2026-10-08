@@ -1,0 +1,14 @@
+@extends('layouts.app')
+@section('title', 'Profilo')
+@section('content')
+<section id="profile"><div class="eyebrow">Il tuo account</div><h1>Il mio profilo.</h1><p>Gestisci i dati del tuo account.</p><div class="profile"><form id="info-form" class="card" method="POST" action="{{ route('profile.update') }}">@csrf<h2>Informazioni personali</h2><p class="subtle">I dati associati al tuo accesso al condominio.</p><div class="fields"><div><label for="name">Nome</label><input id="name" name="name" value="{{ old('name', $account->name) }}" required autocomplete="given-name"></div><div><label for="surname">Cognome</label><input id="surname" name="surname" value="{{ old('surname', $account->surname) }}" required autocomplete="family-name"></div><div><label for="profile-email">Email</label><input id="profile-email" name="email" type="email" value="{{ old('email', $account->email) }}" required autocomplete="email"></div><div><label for="phone">Telefono · facoltativo</label><input id="phone" name="phone" value="{{ old('phone', $account->phone) }}" type="tel" placeholder="Aggiungi un recapito" autocomplete="tel"></div></div><footer><span class="subtle">{{ $account->role }}</span><button>Salva modifiche</button></footer></form><form id="password-form" class="card" method="POST" action="{{ route('profile.password') }}">@csrf<h2>Cambia password</h2><p class="subtle">Scegli una password di almeno 12 caratteri.</p><label for="old-password">Password attuale</label><input id="old-password" name="current_password" type="password" required autocomplete="current-password"><div class="fields"><div><label for="new-password">Nuova password</label><input id="new-password" name="password" type="password" minlength="12" required autocomplete="new-password"></div><div><label for="confirm-password">Conferma nuova password</label><input id="confirm-password" name="password_confirmation" type="password" minlength="12" required autocomplete="new-password"></div></div><footer><span class="subtle">Non usare password già utilizzate altrove.</span><button>Aggiorna password</button></footer></form></div></section>
+@if($account->role === 'Super_user')
+<form class="card" method="POST" action="{{ route('users.store') }}">
+@csrf<h2>Crea utente</h2>
+<label for="user-name">Nome</label><input id="user-name" name="name" required maxlength="100">
+<label for="user-email">Email</label><input id="user-email" name="email" type="email" required>
+<label for="user-password">Password iniziale</label><input id="user-password" name="password" type="password" minlength="12" autocomplete="new-password" required>
+<label for="user-role">Ruolo</label><select id="user-role" name="role"><option value="condomino">Condomino</option><option value="amministratore">Amministratore</option><option value="Super_user">Super user</option></select>
+<button type="submit">Crea utente</button></form>
+@endif
+@endsection
