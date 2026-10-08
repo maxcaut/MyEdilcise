@@ -21,5 +21,7 @@ Route::middleware(SupabaseSession::class)->group(function (): void {
     Route::post('/profilo', [AuthController::class, 'updateProfile'])->name('profile.update');
     Route::post('/profilo/password', [AuthController::class, 'updatePassword'])->middleware('throttle:5,1')->name('profile.password');
     Route::post('/utenti', [AuthController::class, 'createUser'])->middleware('throttle:10,1')->name('users.store');
+    Route::patch('/utenti/{id}/ruolo', [AuthController::class, 'updateUserRole'])->whereUuid('id')->name('users.role.update');
+    Route::delete('/utenti/{id}', [AuthController::class, 'deleteUser'])->whereUuid('id')->name('users.destroy');
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 });

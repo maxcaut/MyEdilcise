@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\ProcessTelegramUpdate;
+use App\Supabase;
 use App\Telegram;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -14,9 +15,10 @@ use Illuminate\View\View;
 
 class TelegramController extends Controller
 {
-    public function profile(Request $request, Telegram $telegram): View
+    public function profile(Request $request, Telegram $telegram, Supabase $supabase): View
     {
         return view('profile', [
+            'enabledUsers' => $request->user()->role === 'Super_user' ? $supabase->enabledUsers() : [],
             'telegramConfigured' => $telegram->configured(),
             'telegramAccount' => DB::table('telegram_accounts')->where('user_id', $request->user()->id)->first(),
         ]);

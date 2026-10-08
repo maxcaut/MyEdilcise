@@ -156,6 +156,7 @@ class SupabaseAccessTest extends TestCase
     public function test_super_user_can_delete_document_and_manage_users_from_profile(): void
     {
         $this->account('Super_user');
+        Http::fake(['https://project.supabase.co/auth/v1/admin/users?*' => Http::response(['users' => []])]);
         $id = DB::table('documents')->insertGetId([
             'title' => 'Riservato', 'supplier' => 'Studio', 'category' => 'Spese', 'date' => '2026-10-08',
             'amount' => 100, 'uploaded_by' => '11111111-1111-4111-8111-111111111111',
@@ -164,6 +165,94 @@ class SupabaseAccessTest extends TestCase
         $this->get('/profilo')->assertOk()->assertSee('Crea utente');
         $this->delete('/documenti/'.$id)->assertRedirect('/dashboard');
         $this->assertDatabaseMissing('documents', ['id' => $id]);
+    }
+
+    #[TestWith(['condomino'])]
+    #[TestWith(['amministratore'])]
+    public function test_only_super_users_can_view_and_manage_enabled_users(string $role): void
+    {
+        $this->account($role, ['role' => 'Super_user']);
+        $id = '22222222-2222-4222-8222-222222222222';
+        $this->get('/profilo')->assertOk()->assertDontSee('Utenti abilitati');
+        $this->patch('/utenti/'.$id.'/ruolo', ['role' => 'Super_user'])->assertForbidden();
+        $this->delete('/utenti/'.$id)->assertForbidden();
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), '/admin/users'));
+    }
+
+    public function test_guests_cannot_manage_users(): void
+    {
+        $id = '22222222-2222-4222-8222-222222222222';
+        $this->patch('/utenti/'.$id.'/ruolo', ['role' => 'Super_user'])->assertRedirect('/');
+        $this->delete('/utenti/'.$id)->assertRedirect('/');
+        Http::assertNothingSent();
+    }
+
+    public function test_super_user_sees_all_pages_of_enabled_users_with_escaped_names(): void
+    {
+        $this->account('Super_user');
+        $user = ['id' => '22222222-2222-4222-8222-222222222222', 'email' => 'resident@example.com',
+            'app_metadata' => ['role' => 'condomino'], 'user_metadata' => ['name' => '<script>alert(1)</script>']];
+        Http::fake(['https://project.supabase.co/auth/v1/admin/users?*' => function ($request) use ($user) {
+            if ($request['page'] == 1) {
+                return Http::response(['users' => array_fill(0, 100, ['id' => 'ignored', 'email' => 'unknown@example.com', 'app_metadata' => ['role' => 'unknown']])]);
+            }
+
+            return Http::response(['users' => [$user, [
+                'id' => '33333333-3333-4333-8333-333333333333', 'email' => 'banned@example.com',
+                'app_metadata' => ['role' => 'condomino'], 'banned_until' => '2099-01-01T00:00:00Z',
+            ], [
+                'id' => '11111111-1111-4111-8111-111111111111', 'email' => 'test@example.com', 'app_metadata' => ['role' => 'Super_user'],
+            ]]]);
+        }]);
+        $this->get('/profilo')->assertOk()->assertSee('Utenti abilitati')->assertSee('resident@example.com')
+            ->assertSee('&lt;script&gt;', false)->assertDontSee('<script>alert(1)</script>', false)
+            ->assertDontSee('unknown@example.com')->assertDontSee('banned@example.com')
+            ->assertSee('Il tuo account: ruolo e cancellazione protetti.')
+            ->assertDontSee('/utenti/11111111-1111-4111-8111-111111111111', false);
+        Http::assertSent(fn ($request) => str_contains($request->url(), '/admin/users?') && $request['page'] == 2 && $request->hasHeader('apikey', 'secret-test'));
+    }
+
+    #[TestWith(['condomino'])]
+    #[TestWith(['amministratore'])]
+    #[TestWith(['Super_user'])]
+    public function test_super_user_updates_protected_role(string $role): void
+    {
+        $this->account('Super_user');
+        $id = '22222222-2222-4222-8222-222222222222';
+        Http::fake(['https://project.supabase.co/auth/v1/admin/users/'.$id => Http::response(['id' => $id])]);
+        $this->patch('/utenti/'.$id.'/ruolo', ['role' => $role, 'email' => 'unexpected@example.com'])
+            ->assertRedirect('/profilo')->assertSessionHas('status', 'Ruolo utente aggiornato.');
+        Http::assertSent(fn ($request) => $request->method() === 'PUT'
+            && $request->data() === ['app_metadata' => ['role' => $role]] && $request->hasHeader('apikey', 'secret-test'));
+    }
+
+    public function test_super_user_deletes_other_account(): void
+    {
+        $this->account('Super_user');
+        $id = '22222222-2222-4222-8222-222222222222';
+        Http::fake(['https://project.supabase.co/auth/v1/admin/users/'.$id => Http::response(['id' => $id])]);
+        $this->delete('/utenti/'.$id)->assertRedirect('/profilo')->assertSessionHas('status', 'Utente cancellato.');
+        Http::assertSent(fn ($request) => $request->method() === 'DELETE'
+            && $request->url() === 'https://project.supabase.co/auth/v1/admin/users/'.$id && $request->hasHeader('apikey', 'secret-test'));
+    }
+
+    public function test_super_user_cannot_delete_or_change_own_role_and_invalid_roles_are_rejected(): void
+    {
+        $this->account('Super_user');
+        $id = '11111111-1111-4111-8111-111111111111';
+        $this->delete('/utenti/'.$id)->assertForbidden();
+        $this->patch('/utenti/'.$id.'/ruolo', ['role' => 'condomino'])->assertForbidden();
+        $this->patch('/utenti/22222222-2222-4222-8222-222222222222/ruolo', ['role' => 'owner'])->assertSessionHasErrors('role');
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), '/admin/users'));
+    }
+
+    public function test_supabase_rejects_user_changes_without_success_message(): void
+    {
+        $this->account('Super_user');
+        $id = '22222222-2222-4222-8222-222222222222';
+        Http::fake(['https://project.supabase.co/auth/v1/admin/users/'.$id => Http::response([], 404)]);
+        $this->patch('/utenti/'.$id.'/ruolo', ['role' => 'amministratore'])->assertSessionHasErrors('role')->assertSessionMissing('status');
+        $this->delete('/utenti/'.$id)->assertSessionHasErrors('user')->assertSessionMissing('status');
     }
 
     public function test_password_change_verifies_current_password_with_supabase(): void

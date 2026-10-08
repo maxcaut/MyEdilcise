@@ -90,4 +90,33 @@ class AuthController extends Controller
 
         return to_route('profile')->with('status', 'Utente creato.');
     }
+
+    public function updateUserRole(Request $request, string $id): RedirectResponse
+    {
+        abort_unless($request->user()->role === 'Super_user', 403);
+        abort_if(strcasecmp($request->user()->id, $id) === 0, 403, 'Non puoi modificare il tuo ruolo.');
+        $data = $request->validate(['role' => ['required', Rule::in(Supabase::ROLES)]]);
+        $response = $this->supabase->client(admin: true)->put('/admin/users/'.$id, [
+            'app_metadata' => ['role' => $data['role']],
+        ]);
+        if ($response->clientError()) {
+            throw ValidationException::withMessages(['role' => 'Ruolo non aggiornato. Verifica che l’utente esista e riprova.']);
+        }
+        $response->throw();
+
+        return to_route('profile')->with('status', 'Ruolo utente aggiornato.');
+    }
+
+    public function deleteUser(Request $request, string $id): RedirectResponse
+    {
+        abort_unless($request->user()->role === 'Super_user', 403);
+        abort_if(strcasecmp($request->user()->id, $id) === 0, 403, 'Non puoi cancellare il tuo account.');
+        $response = $this->supabase->client(admin: true)->delete('/admin/users/'.$id);
+        if ($response->clientError()) {
+            throw ValidationException::withMessages(['user' => 'Utente non cancellato. Verifica che l’utente esista e riprova.']);
+        }
+        $response->throw();
+
+        return to_route('profile')->with('status', 'Utente cancellato.');
+    }
 }

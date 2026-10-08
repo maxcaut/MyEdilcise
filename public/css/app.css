@@ -169,3 +169,13 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var
 @media(prefers-reduced-motion:no-preference){
  a,button{transition:background-color .15s ease,color .15s ease}
 }
+.user-management{max-width:800px;margin-top:var(--section-gap);margin-bottom:var(--section-gap)}
+.user-list{display:grid;gap:24px}
+.user-entry{display:grid;gap:12px;padding-top:20px;border-top:1px solid var(--line);min-width:0}
+.user-entry .pill{display:inline-block;margin-top:8px}
+.user-entry p{margin:0}
+.user-role-form label{margin-top:0}
+.user-actions{display:flex;flex-wrap:wrap;gap:12px}
+.user-actions select{flex:1;min-width:0}
+.user-delete{color:#853c2e}
+@media(max-width:600px){.user-actions{flex-direction:column}.user-actions button{width:100%}}

@@ -33,6 +33,27 @@ class Supabase
         return $this->client()->post('/token?grant_type=password', compact('email', 'password'));
     }
 
+    /** @return list<array<string, mixed>> */
+    public function enabledUsers(): array
+    {
+        $users = [];
+        $page = 1;
+        do {
+            $response = $this->client(admin: true)->get('/admin/users', ['page' => $page++, 'per_page' => 100])->throw();
+            $batch = $response->json('users');
+            abort_unless(is_array($batch), 502, 'Elenco utenti Supabase non valido.');
+            foreach ($batch as $user) {
+                if (in_array($user['app_metadata']['role'] ?? null, self::ROLES, true)
+                    && empty($user['deleted_at'])
+                    && (empty($user['banned_until']) || strtotime($user['banned_until']) <= time())) {
+                    $users[] = $user;
+                }
+            }
+        } while (count($batch) === 100);
+
+        return $users;
+    }
+
     /** @param array<string, mixed> $tokens */
     public function storeSession(array $tokens): void
     {

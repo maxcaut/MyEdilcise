@@ -38,6 +38,43 @@ Categoria: Manutenzione</pre>
 </section>
 @endif
 @if($account->role === 'Super_user')
+<section class="card user-management" aria-labelledby="users-heading">
+    <h2 id="users-heading">Utenti abilitati</h2>
+    <p class="subtle">Gestisci gli account che possono accedere alla web app e assegna il ruolo desiderato.</p>
+    <div class="user-list">
+        @forelse($enabledUsers as $enabledUser)
+            <article class="user-entry">
+                <div>
+                    <strong>{{ trim(($enabledUser['user_metadata']['name'] ?? '').' '.($enabledUser['user_metadata']['surname'] ?? '')) ?: 'Utente' }}</strong>
+                    <div class="subtle">{{ $enabledUser['email'] ?? '' }}</div>
+                    <span class="pill">{{ $enabledUser['app_metadata']['role'] }}</span>
+                </div>
+                @if($enabledUser['id'] === $account->id)
+                    <p class="subtle">Il tuo account: ruolo e cancellazione protetti.</p>
+                @else
+                    <form class="user-role-form" method="POST" action="{{ route('users.role.update', $enabledUser['id']) }}">
+                        @csrf @method('PATCH')
+                        <label for="role-{{ $enabledUser['id'] }}">Ruolo di {{ $enabledUser['email'] ?? 'utente' }}</label>
+                        <div class="user-actions">
+                            <select id="role-{{ $enabledUser['id'] }}" name="role">
+                                @foreach(['condomino' => 'Condomino', 'amministratore' => 'Amministratore', 'Super_user' => 'Super user'] as $roleValue => $roleLabel)
+                                    <option value="{{ $roleValue }}" @selected($enabledUser['app_metadata']['role'] === $roleValue)>{{ $roleLabel }}</option>
+                                @endforeach
+                            </select>
+                            <button type="submit">Aggiorna ruolo</button>
+                        </div>
+                    </form>
+                    <form method="POST" action="{{ route('users.destroy', $enabledUser['id']) }}" onsubmit="return confirm('Cancellare definitivamente questo utente? Non potrà più accedere alla web app.');">
+                        @csrf @method('DELETE')
+                        <button type="submit" class="text-button user-delete" aria-label="Cancella utente {{ $enabledUser['email'] ?? '' }}">Cancella utente</button>
+                    </form>
+                @endif
+            </article>
+        @empty
+            <p>Nessun utente abilitato.</p>
+        @endforelse
+    </div>
+</section>
 <form class="card" method="POST" action="{{ route('users.store') }}">
 @csrf<h2>Crea utente</h2>
 <label for="user-name">Nome</label><input id="user-name" name="name" required maxlength="100">
