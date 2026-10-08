@@ -76,8 +76,8 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var
  body{font-size:15px;-webkit-text-size-adjust:100%}
  .shell{display:block;min-height:100dvh}
  .shell>aside{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;padding:14px 20px;background:white;border:0;border-bottom:1px solid var(--line)}
- aside .brand{justify-content:flex-start}
- aside .brand-logo{max-width:128px}
+ aside .brand{display:block;width:104px;height:72px;overflow:hidden}
+ aside .brand-logo{width:104px;max-width:none;height:104px;transform:translateY(-22px)}
  .building{display:none}
  .side-bottom{display:flex;align-items:center;gap:8px;margin:0;padding:0;font-size:13px}
  .side-bottom>.avatar,.side-bottom>.subtle,.account-name{display:none}
@@ -146,9 +146,10 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var
  .preview-panel p{margin:0}
  .main>a:first-child{display:inline-flex;align-items:center;min-height:44px;font-size:13px}
  .login{display:flex;flex-direction:column;min-height:100dvh;background:white}
- .login-story{padding:28px 24px 24px;background:#e5ebe2;border-top:4px solid #b66d48;align-items:center;text-align:center}
- .login-story .brand-logo{max-width:180px}
- .login-story h1{font-size:24px;line-height:1.25;letter-spacing:-.6px;margin:24px 0 0}
+ .login-story{padding:16px 24px 20px;background:#e5ebe2;border-top:4px solid #b66d48;align-items:center;text-align:center}
+ .login-story .brand{display:block;width:128px;height:88px;overflow:hidden}
+ .login-story .brand-logo{width:128px;max-width:none;height:128px;transform:translateY(-28px)}
+ .login-story h1{font-size:20px;line-height:1.25;letter-spacing:-.6px;margin:12px 0 0}
  .login-story p,.illustration{display:none}
  .login-form{display:block;padding:32px 24px calc(32px + env(safe-area-inset-bottom,0px))}
  .form-width{max-width:420px;margin:auto}
