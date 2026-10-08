@@ -97,7 +97,7 @@ class SupabaseAccessTest extends TestCase
         $id = DB::table('documents')->value('id');
         $this->get('/documenti/'.$id)->assertOk()->assertSee('Nessun allegato.')->assertDontSee('Apri documento originale');
         $this->get('/documenti/'.$id.'/file')->assertNotFound();
-        $this->get('/dashboard')->assertOk()->assertSee('Spesa');
+        $this->get('/dashboard?month=2026-10')->assertOk()->assertSee('Spesa');
     }
 
     public function test_document_requires_only_title_supplier_date_and_amount(): void

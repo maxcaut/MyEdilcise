@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -12,8 +13,24 @@ class FileController extends Controller
 {
     public function dashboard(Request $request): View
     {
-        $filters = $request->validate(['q' => ['nullable', 'string', 'max:150'], 'category' => ['nullable', 'string', 'max:50']]);
-        $query = DB::table('documents')->select('id', 'title', 'supplier', 'date', 'category', 'amount');
+        $filters = $request->validate([
+            'q' => ['nullable', 'string', 'max:150'],
+            'category' => ['nullable', 'string', 'max:50'],
+            'month' => ['nullable', 'date_format:Y-m'],
+        ]);
+        $selectedMonth = $filters['month'] ?? now('Europe/Rome')->format('Y-m');
+        $monthStart = CarbonImmutable::createFromFormat('!Y-m', $selectedMonth, 'Europe/Rome');
+        $monthLabel = $monthStart->locale('it')->translatedFormat('F Y');
+        $monthNavigation = [
+            'previous' => route('dashboard', array_replace($filters, ['month' => $monthStart->subMonth()->format('Y-m')])),
+            'next' => route('dashboard', array_replace($filters, ['month' => $monthStart->addMonth()->format('Y-m')])),
+            'current' => route('dashboard', array_replace($filters, ['month' => now('Europe/Rome')->format('Y-m')])),
+        ];
+        $query = DB::table('documents')
+            ->where('date', '>=', $monthStart->toDateString())
+            ->where('date', '<', $monthStart->addMonth()->toDateString());
+        $monthlyTotal = (clone $query)->sum('amount');
+        $query->select('id', 'title', 'supplier', 'date', 'category', 'amount');
         if ($term = trim($filters['q'] ?? '')) {
             $query->where(fn ($query) => $query->whereRaw('LOWER(title) LIKE ?', ['%'.mb_strtolower($term).'%'])
                 ->orWhereRaw('LOWER(supplier) LIKE ?', ['%'.mb_strtolower($term).'%']));
@@ -25,7 +42,7 @@ class FileController extends Controller
             ->map(fn (object $document): array => (array) $document)->all();
         $categories = DB::table('documents')->whereNotNull('category')->distinct()->orderBy('category')->pluck('category')->all();
 
-        return view('dashboard', compact('documents', 'categories'));
+        return view('dashboard', compact('documents', 'categories', 'selectedMonth', 'monthLabel', 'monthlyTotal', 'monthNavigation'));
     }
 
     public function show(int $id): View
