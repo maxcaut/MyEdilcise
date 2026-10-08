@@ -58,10 +58,15 @@
                 return;
             }
 
+            event.preventDefault();
             loginLoading.hidden = false;
             loginForm.setAttribute('aria-busy', 'true');
             loginButton.disabled = true;
             loginButton.textContent = 'Accesso in corso…';
+
+            requestAnimationFrame(() => {
+                setTimeout(() => HTMLFormElement.prototype.submit.call(loginForm), 150);
+            });
         });
 
         window.addEventListener('pageshow', () => {
