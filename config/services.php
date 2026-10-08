@@ -2,6 +2,13 @@
 
 return [
 
+    'telegram' => [
+        'token' => env('TELEGRAM_BOT_TOKEN'),
+        'username' => env('TELEGRAM_BOT_USERNAME'),
+        'webhook_secret' => env('TELEGRAM_WEBHOOK_SECRET'),
+        'queue_connection' => env('TELEGRAM_QUEUE_CONNECTION', 'database'),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Third Party Services
