@@ -24,7 +24,7 @@
                 <h1>Bentornato.</h1>
                 <p>Accedi per consultare i documenti del tuo condominio.</p>
 
-                <form method="POST" action="{{ route('login.store') }}">
+                <form id="login-form" method="POST" action="{{ route('login.store') }}">
                     @csrf
                     <label for="email">Indirizzo email</label>
                     <input id="email" name="email" type="email" value="{{ old('email') }}" placeholder="nome@esempio.it" required autocomplete="username">
@@ -37,4 +37,38 @@
             </div>
         </div>
     </section>
+    <div id="login-loading" class="login-loading" role="status" aria-live="polite" aria-atomic="true" hidden>
+        <div class="login-loading-content">
+            <div class="login-loading-logo" aria-hidden="true">
+                @include('components.brand')
+            </div>
+            <span class="login-loading-spinner" aria-hidden="true"></span>
+            <p>Accesso in corso…</p>
+        </div>
+    </div>
+
+    <script>
+        const loginForm = document.getElementById('login-form');
+        const loginLoading = document.getElementById('login-loading');
+        const loginButton = loginForm.querySelector('button[type="submit"]');
+
+        loginForm.addEventListener('submit', (event) => {
+            if (loginButton.disabled) {
+                event.preventDefault();
+                return;
+            }
+
+            loginLoading.hidden = false;
+            loginForm.setAttribute('aria-busy', 'true');
+            loginButton.disabled = true;
+            loginButton.textContent = 'Accesso in corso…';
+        });
+
+        window.addEventListener('pageshow', () => {
+            loginLoading.hidden = true;
+            loginForm.removeAttribute('aria-busy');
+            loginButton.disabled = false;
+            loginButton.textContent = 'Accedi';
+        });
+    </script>
 @endsection
