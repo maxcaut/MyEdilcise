@@ -72,7 +72,47 @@ mkdir -p storage/framework/cache/data storage/framework/cache/locks \
 php artisan config:cache --no-interaction
 php artisan view:cache --no-interaction
 chown -R www-data:www-data storage bootstrap/cache
-exec apache2-foreground
+
+worker_pid=''
+scheduler_pid=''
+web_pid=''
+shutdown() {
+    trap '' TERM INT
+    for process_pid in $web_pid $worker_pid $scheduler_pid; do
+        kill -TERM "$process_pid" 2>/dev/null || true
+    done
+    wait || true
+}
+trap 'shutdown; exit 0' TERM INT
+
+if [ -n "${TELEGRAM_BOT_TOKEN:-}" ] && [ -n "${TELEGRAM_BOT_USERNAME:-}" ] && [ -n "${TELEGRAM_WEBHOOK_SECRET:-}" ]; then
+    php artisan migrate --force --no-interaction
+    if ! php artisan telegram:setup --no-interaction; then
+        echo 'Telegram: webhook non registrato. Controlla Environment e ripeti il deploy.' >&2
+    fi
+    php artisan queue:work database --queue=telegram --timeout=80 --sleep=1 --no-interaction &
+    worker_pid=$!
+    php artisan schedule:work --no-interaction &
+    scheduler_pid=$!
+fi
+
+apache2-foreground &
+web_pid=$!
+while kill -0 "$web_pid" 2>/dev/null; do
+    if [ -n "$worker_pid" ] && ! kill -0 "$worker_pid" 2>/dev/null; then
+        echo 'Telegram: worker terminato. Riavvio del container necessario.' >&2
+        shutdown
+        exit 1
+    fi
+    if [ -n "$scheduler_pid" ] && ! kill -0 "$scheduler_pid" 2>/dev/null; then
+        echo 'Telegram: scheduler terminato. Riavvio del container necessario.' >&2
+        shutdown
+        exit 1
+    fi
+    sleep 2
+done
+shutdown
+exit 1
 ENTRYPOINT
 chmod +x /usr/local/bin/start-app
 SH
