@@ -240,3 +240,9 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var
 @media(prefers-reduced-motion:reduce){.navigation-loading-spinner{animation:none}}
 .access-table{display:block}
 .access-table th:first-child{padding-left:12px}
+.profile-disclosure>summary{display:flex;align-items:center;justify-content:space-between;gap:16px;cursor:pointer;min-height:44px;list-style:none}
+.profile-disclosure>summary::-webkit-details-marker{display:none}
+.profile-disclosure>summary h2{margin:0}
+.profile-disclosure>summary::after{content:'+';font-size:24px;font-weight:400}
+.profile-disclosure[open]>summary{margin-bottom:16px}
+.profile-disclosure[open]>summary::after{content:'−'}

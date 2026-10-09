@@ -43,8 +43,8 @@ Categoria: Manutenzione</pre>
 </section>
 @endif
 @if($account->role === 'Super_user')
-<section class="card user-management" aria-labelledby="accesses-heading">
-    <h2 id="accesses-heading">Accessi all’app</h2>
+<details class="card user-management profile-disclosure" aria-labelledby="accesses-heading">
+    <summary><h2 id="accesses-heading">Accessi all’app</h2></summary>
     <form method="POST" action="{{ route('profile.accesses.reset') }}">
         @csrf
         <button type="submit">Azzera visualizzazione</button>
@@ -66,7 +66,7 @@ Categoria: Manutenzione</pre>
             </tbody>
         </table>
     </div>
-</section>
+</details>
 <section class="card user-management" aria-labelledby="telegram-accounts-heading">
     <h2 id="telegram-accounts-heading">Account collegati a Telegram</h2>
     <p class="subtle">Revoca un collegamento per interrompere l’accesso al bot e annullare eventuali caricamenti incompleti. L’utente potrà collegarsi nuovamente dal proprio profilo.</p>
@@ -89,8 +89,8 @@ Categoria: Manutenzione</pre>
         @endforelse
     </div>
 </section>
-<section class="card user-management" aria-labelledby="users-heading">
-    <h2 id="users-heading">Utenti abilitati</h2>
+<details class="card user-management profile-disclosure" aria-labelledby="users-heading">
+    <summary><h2 id="users-heading">Utenti abilitati</h2></summary>
     <p class="subtle">Gestisci gli account che possono accedere alla web app e assegna il ruolo desiderato.</p>
     <div class="user-list">
         @forelse($enabledUsers as $enabledUser)
@@ -125,7 +125,7 @@ Categoria: Manutenzione</pre>
             <p>Nessun utente abilitato.</p>
         @endforelse
     </div>
-</section>
+</details>
 <form class="card" method="POST" action="{{ route('users.store') }}">
 @csrf<h2>Crea utente</h2>
 <label for="user-name">Nome</label><input id="user-name" name="name" required maxlength="100">
