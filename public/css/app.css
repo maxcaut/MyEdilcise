@@ -230,8 +230,11 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var
  .month-picker button,.month-picker .text-button{justify-content:center;text-align:center}
 }
 
-.navigation-loading{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:1000;max-width:calc(100vw - 32px);display:flex;align-items:center;gap:12px;padding:12px 18px;border:1px solid var(--line);border-radius:12px;background:white;color:var(--green);box-shadow:0 4px 20px #20332d1a;font-weight:600;pointer-events:none}
+.navigation-loading{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:24px;background:rgb(32 51 45 / 35%)}
 .navigation-loading[hidden]{display:none}
-.navigation-loading::before{content:'';width:18px;height:18px;flex-shrink:0;border:2px solid var(--line);border-top-color:var(--green);border-radius:50%;animation:login-spinner-turn .9s linear infinite}
+.navigation-loading-panel{display:flex;flex-direction:column;align-items:center;gap:18px;width:100%;max-width:420px;padding:36px 24px;border:1px solid var(--line);border-radius:18px;background:white;color:var(--green);box-shadow:0 12px 48px #20332d33;text-align:center}
+.navigation-loading-panel strong{font-size:22px;line-height:1.3}
+.navigation-loading-panel .subtle{font-size:15px}
+.navigation-loading-spinner{width:44px;height:44px;border:4px solid var(--line);border-top-color:var(--green);border-radius:50%;animation:login-spinner-turn .9s linear infinite}
 .side-nav a.is-loading{background:#e9f2eb;color:var(--green);box-shadow:inset 0 0 0 1px var(--green)}
-@media(prefers-reduced-motion:reduce){.navigation-loading::before{animation:none}}
+@media(prefers-reduced-motion:reduce){.navigation-loading-spinner{animation:none}}

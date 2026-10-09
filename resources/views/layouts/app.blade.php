@@ -8,14 +8,21 @@
 @yield('content')
 @if(!request()->routeIs('login'))</main></div>@endif
 @if(!request()->routeIs('login'))
-<div id="navigation-loading" class="navigation-loading" role="status" aria-live="polite" aria-atomic="true" hidden></div>
+<div id="navigation-loading" class="navigation-loading" role="status" aria-live="polite" aria-atomic="true" hidden>
+    <div class="navigation-loading-panel">
+        <span class="navigation-loading-spinner" aria-hidden="true"></span>
+        <strong id="navigation-loading-label"></strong>
+        <span class="subtle">Attendi un momento, stiamo aprendo la schermata.</span>
+    </div>
+</div>
 <script>
     const navigationLoading = document.getElementById('navigation-loading');
+    const navigationLoadingLabel = document.getElementById('navigation-loading-label');
     const navigationLinks = document.querySelectorAll('.side-nav a');
 
     const resetNavigation = () => {
         navigationLoading.hidden = true;
-        navigationLoading.textContent = '';
+        navigationLoadingLabel.textContent = '';
         navigationLinks.forEach((link) => {
             link.classList.remove('is-loading');
             link.removeAttribute('aria-busy');
@@ -36,7 +43,7 @@
             resetNavigation();
             link.classList.add('is-loading');
             link.setAttribute('aria-busy', 'true');
-            navigationLoading.textContent = `Apertura ${link.textContent.trim()}…`;
+            navigationLoadingLabel.textContent = `Apertura ${link.textContent.trim()}…`;
             navigationLoading.hidden = false;
         });
     });
