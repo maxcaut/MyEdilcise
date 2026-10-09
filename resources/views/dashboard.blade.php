@@ -1,7 +1,7 @@
 @extends('layouts.app')
 @section('title', 'Documenti')
 @section('content')
-<section id="dashboard"><div class="eyebrow">Condominio EdilCise</div><div class="heading"><div><h1>I documenti, in ordine.</h1><p>Consulta le spese e i documenti condivisi dall’amministratore.</p></div></div>@if(in_array($account->role, ['Super_user', 'amministratore'], true))
+<section id="dashboard"><div class="eyebrow">{{ config('condominio.name') }}</div><div class="heading"><div><h1>I documenti, in ordine.</h1><p>Consulta le spese e i documenti condivisi dall’amministratore.</p></div></div>@if(in_array($account->role, ['Super_user', 'amministratore'], true))
 <details class="card upload-panel" @if($errors->any()) open @endif><summary>Carica un documento</summary><form class="card" method="POST" enctype="multipart/form-data" action="{{ route('documents.store') }}">
 @csrf
 <label for="title">Titolo</label><input id="title" name="title" value="{{ old('title') }}" maxlength="150" required>

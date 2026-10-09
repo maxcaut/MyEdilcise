@@ -23,6 +23,7 @@ class RenderStartupTest extends TestCase
 #!/bin/sh
 printf '%s\n' "$*" >> "$STARTUP_EVENTS"
 case "$2" in
+    migrate) exit "${MIGRATE_EXIT_CODE:-0}" ;;
     telegram:setup) exit "${SETUP_EXIT_CODE:-0}" ;;
     queue:work)
         if [ "${WORKER_EXIT:-0}" = 1 ]; then exit 1; fi
@@ -66,9 +67,19 @@ SH;
     {
         $this->withContainerStartup([], function (Process $process, string $events): void {
             $this->assertTrue($process->waitUntil(fn (): bool => str_contains($process->getOutput(), 'web-ready')));
+            $this->assertStringContainsString('artisan migrate --force --no-interaction', File::get($events));
             $this->assertStringNotContainsString('telegram:setup', File::get($events));
             $this->assertStringNotContainsString('queue:work', File::get($events));
             $this->assertTrue($process->isRunning());
+        });
+    }
+
+    public function test_web_service_does_not_start_when_migrations_fail(): void
+    {
+        $this->withContainerStartup(['MIGRATE_EXIT_CODE' => '1'], function (Process $process, string $events): void {
+            $this->assertSame(1, $process->wait());
+            $this->assertStringContainsString('artisan migrate --force --no-interaction', File::get($events));
+            $this->assertStringNotContainsString('web-ready', $process->getOutput());
         });
     }
 

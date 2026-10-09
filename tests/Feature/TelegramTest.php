@@ -59,6 +59,16 @@ class TelegramTest extends TestCase
         $this->withSession(['supabase' => ['access_token' => 'token', 'refresh_token' => 'refresh', 'expires_at' => time() + 3600]]);
     }
 
+    public function test_reply_uses_the_configured_portal_name(): void
+    {
+        config(['app.name' => 'Portale Aurora']);
+        $this->fakeNetwork();
+
+        $this->deliver(['text' => '/start']);
+
+        $this->assertReplyContains('Collega prima Telegram dal tuo profilo Portale Aurora.');
+    }
+
     private function linkedAccount(): void
     {
         DB::table('telegram_accounts')->insert(['user_id' => self::USER_ID, 'telegram_id' => '12345']);

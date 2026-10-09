@@ -40,6 +40,38 @@ class PrototypeTest extends TestCase
         }
     }
 
+    public function test_pages_use_the_configured_condominium_identity(): void
+    {
+        config([
+            'app.name' => 'Portale Aurora',
+            'condominio.name' => 'Condominio Aurora',
+            'condominio.city' => 'Napoli',
+            'condominio.logo_url' => 'https://images.example.com/aurora.png',
+            'condominio.favicon_url' => 'https://images.example.com/favicon.png',
+        ]);
+
+        foreach (['/', '/dashboard', '/profilo', '/documenti/1'] as $path) {
+            $this->get($path)->assertOk()->assertSee('Portale Aurora')->assertSee('Condominio Aurora')
+                ->assertSee('Napoli')->assertSee('https://images.example.com/aurora.png')
+                ->assertSee('https://images.example.com/favicon.png')
+                ->assertDontSee('EdilCise')->assertDontSee('Somma Vesuviana');
+        }
+    }
+
+    public function test_pages_show_the_name_when_the_logo_and_city_are_empty(): void
+    {
+        config([
+            'condominio.name' => 'Condominio Aurora',
+            'condominio.city' => '',
+            'condominio.logo_url' => '',
+            'condominio.favicon_url' => '',
+        ]);
+
+        $this->get('/')->assertOk()->assertSee('Condominio Aurora')
+            ->assertSee('favicon.ico')->assertDontSee('img/edilcise-transparent.png')
+            ->assertDontSee('Somma Vesuviana');
+    }
+
     public function test_search_and_category_filter_together(): void
     {
         $this->get('/dashboard?month=2026-10&q=ASCENSORE&category=Manutenzione')

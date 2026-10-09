@@ -32,10 +32,10 @@ ENV APP_ENV=production \
     APP_DEBUG=false \
     LOG_CHANNEL=stderr \
     DB_CONNECTION=pgsql \
-    SESSION_DRIVER=file \
+    SESSION_DRIVER=database \
     SESSION_ENCRYPT=true \
     SESSION_SECURE_COOKIE=true \
-    CACHE_STORE=file \
+    CACHE_STORE=database \
     QUEUE_CONNECTION=sync \
     PORT=10000
 
@@ -71,6 +71,7 @@ mkdir -p storage/framework/cache/data storage/framework/cache/locks \
     storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
 php artisan config:cache --no-interaction
 php artisan view:cache --no-interaction
+php artisan migrate --force --no-interaction
 chown -R www-data:www-data storage bootstrap/cache
 
 worker_pid=''
@@ -86,7 +87,6 @@ shutdown() {
 trap 'shutdown; exit 0' TERM INT
 
 if [ -n "${TELEGRAM_BOT_TOKEN:-}" ] && [ -n "${TELEGRAM_BOT_USERNAME:-}" ] && [ -n "${TELEGRAM_WEBHOOK_SECRET:-}" ]; then
-    php artisan migrate --force --no-interaction
     if ! php artisan telegram:setup --no-interaction; then
         echo 'Telegram: webhook non registrato. Controlla Environment e ripeti il deploy.' >&2
     fi

@@ -24,7 +24,7 @@ class TelegramConversation
         }
         $account = DB::table('telegram_accounts')->where('telegram_id', $telegramId)->lockForUpdate()->first();
         if (! $account) {
-            return ['text' => 'Collega prima Telegram dal tuo profilo MyEdilcise.'];
+            return ['text' => 'Collega prima Telegram dal tuo profilo '.config('app.name').'.'];
         }
         if (! $this->authorized($account->user_id)) {
             DB::table('telegram_accounts')->where('id', $account->id)->update(['draft' => null, 'draft_expires_at' => null]);
@@ -73,7 +73,7 @@ class TelegramConversation
                 ]);
                 $this->saveDraft($account, null);
 
-                return ['text' => 'Documento caricato su MyEdilcise ✅'."\n".route('documents.show', ['id' => $id])];
+                return ['text' => 'Documento caricato su '.config('app.name').' ✅'."\n".route('documents.show', ['id' => $id])];
             }
             $draft['data'][$field] = $this->validateField($field, $text);
         } else {
@@ -99,7 +99,7 @@ class TelegramConversation
     {
         $account = DB::table('telegram_accounts')->where('link_hash', hash('sha256', $token))->lockForUpdate()->first();
         if (! $account || ! $account->link_expires_at || $account->link_expires_at <= now()->toDateTimeString()) {
-            return ['text' => 'Collegamento scaduto o già utilizzato. Generane uno nuovo dal tuo profilo MyEdilcise.'];
+            return ['text' => 'Collegamento scaduto o già utilizzato. Generane uno nuovo dal tuo profilo '.config('app.name').'.'];
         }
         if (! $this->authorized($account->user_id)) {
             return ['text' => 'Il tuo account non è autorizzato a caricare documenti.'];
@@ -112,7 +112,7 @@ class TelegramConversation
             'draft' => null, 'draft_expires_at' => null, 'updated_at' => now(),
         ]);
 
-        return ['text' => 'Telegram collegato a MyEdilcise ✅ Invia un PDF, JPG o PNG fino a 10 MB per iniziare.'];
+        return ['text' => 'Telegram collegato a '.config('app.name').' ✅ Invia un PDF, JPG o PNG fino a 10 MB per iniziare.'];
     }
 
     private function authorized(string $userId): bool

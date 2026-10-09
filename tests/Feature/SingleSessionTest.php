@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -15,6 +17,37 @@ class SingleSessionTest extends TestCase
         parent::setUp();
         config(['services.supabase.url' => 'https://project.supabase.co', 'services.supabase.publishable_key' => 'public-test']);
         Http::preventStrayRequests();
+    }
+
+    public function test_database_session_and_active_access_survive_reloading_the_stores(): void
+    {
+        config(['session.driver' => 'database', 'session.encrypt' => true, 'cache.default' => 'database']);
+        $this->app['session']->forgetDrivers();
+        $this->app->forgetInstance('session.store');
+        $userId = '11111111-1111-4111-8111-111111111111';
+        $user = ['id' => $userId, 'email' => 'test@example.com', 'app_metadata' => ['role' => 'condomino']];
+        Http::fake([
+            'https://project.supabase.co/auth/v1/token?grant_type=password' => Http::response([
+                'access_token' => 'access', 'refresh_token' => 'refresh', 'expires_in' => 3600, 'user' => $user,
+            ]),
+            'https://project.supabase.co/auth/v1/user' => Http::response($user),
+        ]);
+
+        $response = $this->post('/login', ['email' => 'test@example.com', 'password' => 'secret'])
+            ->assertRedirect('/dashboard');
+        $cookieName = config('session.cookie');
+        $cookie = $response->getCookie($cookieName, decrypt: false);
+        $this->assertNotNull($cookie);
+        $this->assertDatabaseCount('sessions', 1);
+        $this->assertStringNotContainsString('access_token', base64_decode(DB::table('sessions')->value('payload'), true));
+
+        $this->app['session']->forgetDrivers();
+        $this->app->forgetInstance('session.store');
+        Cache::forgetDriver('database');
+
+        $this->withUnencryptedCookie($cookieName, $cookie->getValue())->get('/dashboard')->assertOk();
+        $this->assertDatabaseHas('sessions', ['user_id' => null]);
+        $this->assertNotNull(Cache::get('supabase.active_session.'.$userId));
     }
 
     public function test_new_login_disconnects_previous_device_and_refresh_does_not_restore_it(): void
