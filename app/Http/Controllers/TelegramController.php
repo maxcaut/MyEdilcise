@@ -8,6 +8,8 @@ use App\Telegram;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -17,14 +19,30 @@ class TelegramController extends Controller
 {
     public function profile(Request $request, Telegram $telegram, Supabase $supabase): View
     {
+        $enabledUsers = $request->user()->role === 'Super_user' ? $supabase->enabledUsers() : [];
+        $accessesResetAt = $request->user()->role === 'Super_user'
+            ? Cache::get('supabase.accesses_reset_at.'.$request->user()->id)
+            : null;
+
         return view('profile', [
-            'enabledUsers' => $request->user()->role === 'Super_user' ? $supabase->enabledUsers() : [],
+            'enabledUsers' => $enabledUsers,
+            'accessedUsers' => collect($enabledUsers)->filter(fn (array $user): bool => ! empty($user['last_sign_in_at'])
+                && ($accessesResetAt === null || Carbon::parse($user['last_sign_in_at'])->greaterThan($accessesResetAt)))->sortByDesc('last_sign_in_at'),
             'telegramConfigured' => $telegram->configured(),
             'telegramAccount' => DB::table('telegram_accounts')->where('user_id', $request->user()->id)->first(),
             'linkedTelegramAccounts' => $request->user()->role === 'Super_user'
                 ? DB::table('telegram_accounts')->select('id', 'user_id', 'telegram_id')->whereNotNull('telegram_id')->orderBy('id')->get()
                 : collect(),
         ]);
+    }
+
+    public function resetAccesses(Request $request): RedirectResponse
+    {
+        abort_unless($request->user()->role === 'Super_user', 403);
+
+        Cache::forever('supabase.accesses_reset_at.'.$request->user()->id, now()->toISOString());
+
+        return to_route('profile')->with('status', 'Visualizzazione azzerata. Compariranno gli accessi successivi al reset.');
     }
 
     public function store(Request $request, Telegram $telegram): RedirectResponse

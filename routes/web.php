@@ -16,6 +16,7 @@ Route::middleware(SupabaseSession::class)->group(function (): void {
     Route::post('/documenti', [FileController::class, 'store'])->name('documents.store');
     Route::delete('/documenti/{id}', [FileController::class, 'destroy'])->whereNumber('id')->name('documents.destroy');
     Route::get('/profilo', [TelegramController::class, 'profile'])->name('profile');
+    Route::post('/profilo/accessi/reset', [TelegramController::class, 'resetAccesses'])->name('profile.accesses.reset');
     Route::post('/profilo/telegram', [TelegramController::class, 'store'])->middleware('throttle:5,1')->name('profile.telegram.store');
     Route::delete('/profilo/telegram', [TelegramController::class, 'destroy'])->name('profile.telegram.destroy');
     Route::delete('/profilo/telegram/{id}', [TelegramController::class, 'revoke'])->whereNumber('id')->name('profile.telegram.revoke');

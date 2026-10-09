@@ -43,6 +43,30 @@ Categoria: Manutenzione</pre>
 </section>
 @endif
 @if($account->role === 'Super_user')
+<section class="card user-management" aria-labelledby="accesses-heading">
+    <h2 id="accesses-heading">Accessi all’app</h2>
+    <form method="POST" action="{{ route('profile.accesses.reset') }}">
+        @csrf
+        <button type="submit">Azzera visualizzazione</button>
+    </form>
+    <p class="subtle">Il reset nasconde gli accessi precedenti. Gli accessi successivi compariranno nella tabella.</p>
+    <div class="table-wrap access-table">
+        <table>
+            <thead><tr><th scope="col">Nome utente</th><th scope="col">Email</th><th scope="col">Ultimo accesso · ora italiana</th></tr></thead>
+            <tbody>
+                @forelse($accessedUsers as $accessedUser)
+                    <tr>
+                        <td>{{ trim(($accessedUser['user_metadata']['name'] ?? '').' '.($accessedUser['user_metadata']['surname'] ?? '')) ?: '—' }}</td>
+                        <td>{{ $accessedUser['email'] ?? '—' }}</td>
+                        <td>{{ \Illuminate\Support\Carbon::parse($accessedUser['last_sign_in_at'])->timezone('Europe/Rome')->format('d/m/Y H:i:s') }}</td>
+                    </tr>
+                @empty
+                    <tr><td colspan="3">Nessun accesso registrato.</td></tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
+</section>
 <section class="card user-management" aria-labelledby="telegram-accounts-heading">
     <h2 id="telegram-accounts-heading">Account collegati a Telegram</h2>
     <p class="subtle">Revoca un collegamento per interrompere l’accesso al bot e annullare eventuali caricamenti incompleti. L’utente potrà collegarsi nuovamente dal proprio profilo.</p>
