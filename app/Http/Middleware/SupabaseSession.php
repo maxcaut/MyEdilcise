@@ -70,6 +70,10 @@ class SupabaseSession
         $request->setUserResolver(fn (): GenericUser => $user);
         view()->share('account', $user);
 
+        if ($request->session()->get('identity_confirmation_pending') && ! $request->routeIs('identity.confirm', 'identity.confirm.store', 'logout')) {
+            return to_route('identity.confirm');
+        }
+
         return $next($request);
     }
 }

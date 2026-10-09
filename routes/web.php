@@ -10,6 +10,8 @@ Route::view('/', 'login')->name('login');
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1')->name('login.store');
 Route::post('/telegram/webhook', [TelegramController::class, 'webhook'])->name('telegram.webhook');
 Route::middleware(SupabaseSession::class)->group(function (): void {
+    Route::view('/conferma-identita', 'confirm-identity')->name('identity.confirm');
+    Route::post('/conferma-identita', [AuthController::class, 'confirmIdentity'])->name('identity.confirm.store');
     Route::get('/dashboard', [FileController::class, 'dashboard'])->name('dashboard');
     Route::get('/documenti/{id}', [FileController::class, 'show'])->whereNumber('id')->name('documents.show');
     Route::get('/documenti/{id}/file', [FileController::class, 'download'])->whereNumber('id')->name('documents.download');

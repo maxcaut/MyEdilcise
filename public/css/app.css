@@ -246,3 +246,13 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var
 .profile-disclosure>summary::after{content:'+';font-size:24px;font-weight:400}
 .profile-disclosure[open]>summary{margin-bottom:16px}
 .profile-disclosure[open]>summary::after{content:'−'}
+
+.identity-backdrop{min-height:100vh;min-height:100dvh;display:grid;place-items:center;padding:24px;background:#20332d66}
+.identity-popup{width:100%;max-width:500px;padding:30px;border:1px solid var(--line);border-radius:16px;background:var(--paper);box-shadow:0 16px 48px #20332d33}
+.identity-popup .brand{margin-bottom:28px}
+.identity-popup h1{font-size:28px}
+.identity-popup p{overflow-wrap:anywhere}
+.identity-checkbox{display:flex;align-items:flex-start;gap:12px;margin:24px 0;font-size:14px}
+.identity-checkbox input{flex:none;width:20px;min-height:20px;margin-top:2px;accent-color:var(--green)}
+.identity-popup button{width:100%}
+.identity-popup .text-button{margin-top:12px}

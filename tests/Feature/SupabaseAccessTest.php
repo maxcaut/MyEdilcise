@@ -50,10 +50,56 @@ class SupabaseAccessTest extends TestCase
             'user' => ['id' => '11111111-1111-4111-8111-111111111111'],
         ])->push([], 400)]);
         $this->post('/login', ['email' => 'test@example.com', 'password' => 'secret'])
-            ->assertRedirect('/dashboard')->assertSessionHas('supabase.access_token', 'new-token');
+            ->assertRedirect('/conferma-identita')->assertSessionHas('supabase.access_token', 'new-token');
         Http::assertSent(fn ($request) => $request['email'] === 'test@example.com' && $request['password'] === 'secret');
         $this->post('/login', ['email' => 'test@example.com', 'password' => 'wrong'])->assertSessionHasErrors('email');
         $this->assertNull(session()->getOldInput('password'));
+    }
+
+    public function test_pending_identity_displays_popup_and_blocks_application_access(): void
+    {
+        $this->account('condomino');
+        $this->withSession(['identity_confirmation_pending' => true]);
+
+        $this->get('/conferma-identita')->assertOk()->assertSee('Sei proprio tu?')
+            ->assertSee('test@example.com')->assertSee('privacy')->assertSee('Non sono io');
+        foreach (['/dashboard', '/profilo', '/documenti/1/file'] as $path) {
+            $this->get($path)->assertRedirect('/conferma-identita');
+        }
+        $this->post('/documenti')->assertRedirect('/conferma-identita');
+        $this->assertDatabaseCount('documents', 0);
+    }
+
+    public function test_identity_requires_checkbox_and_confirmation_opens_application(): void
+    {
+        $this->account('condomino');
+        $this->withSession(['identity_confirmation_pending' => true]);
+
+        $this->from('/conferma-identita')->post('/conferma-identita')->assertRedirect('/conferma-identita')
+            ->assertSessionHasErrors(['identity_confirmed' => 'Conferma di essere il titolare dell’account per accedere.'])
+            ->assertSessionHas('identity_confirmation_pending', true);
+        $this->post('/conferma-identita', ['identity_confirmed' => '1'])->assertRedirect('/dashboard')
+            ->assertSessionMissing('identity_confirmation_pending');
+        $this->get('/dashboard')->assertOk();
+    }
+
+    public function test_declining_identity_logs_out_pending_session(): void
+    {
+        $this->account('condomino');
+        $this->withSession(['identity_confirmation_pending' => true]);
+        Http::fake(['https://project.supabase.co/auth/v1/logout?scope=local' => Http::response([], 204)]);
+
+        $this->post('/logout')->assertRedirect('/')->assertSessionMissing('supabase')
+            ->assertSessionMissing('identity_confirmation_pending');
+        $this->get('/dashboard')->assertRedirect('/');
+        Http::assertSent(fn ($request) => str_contains($request->url(), '/logout?scope=local'));
+    }
+
+    public function test_guest_cannot_confirm_identity(): void
+    {
+        $this->get('/conferma-identita')->assertRedirect('/');
+        $this->post('/conferma-identita', ['identity_confirmed' => '1'])->assertRedirect('/');
+        Http::assertNothingSent();
     }
 
     public function test_condomino_cannot_upload_delete_or_create_users(): void

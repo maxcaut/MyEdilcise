@@ -29,6 +29,17 @@ class AuthController extends Controller
         $sessionToken = (string) Str::uuid();
         Cache::forever('supabase.active_session.'.$userId, $sessionToken);
         $request->session()->put('supabase_session_token', $sessionToken);
+        $request->session()->put('identity_confirmation_pending', true);
+
+        return to_route('identity.confirm');
+    }
+
+    public function confirmIdentity(Request $request): RedirectResponse
+    {
+        $request->validate(['identity_confirmed' => ['accepted']], [
+            'identity_confirmed.accepted' => 'Conferma di essere il titolare dell’account per accedere.',
+        ]);
+        $request->session()->forget('identity_confirmation_pending');
 
         return to_route('dashboard');
     }

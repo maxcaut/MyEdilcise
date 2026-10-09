@@ -34,8 +34,12 @@ class SingleSessionTest extends TestCase
         ]);
 
         $response = $this->post('/login', ['email' => 'test@example.com', 'password' => 'secret'])
-            ->assertRedirect('/dashboard');
+            ->assertRedirect('/conferma-identita');
         $cookieName = config('session.cookie');
+        $cookie = $response->getCookie($cookieName, decrypt: false);
+        $this->assertNotNull($cookie);
+        $response = $this->withUnencryptedCookie($cookieName, $cookie->getValue())
+            ->post('/conferma-identita', ['identity_confirmed' => '1'])->assertRedirect('/dashboard');
         $cookie = $response->getCookie($cookieName, decrypt: false);
         $this->assertNotNull($cookie);
         $this->assertDatabaseCount('sessions', 1);
@@ -63,12 +67,14 @@ class SingleSessionTest extends TestCase
             'https://project.supabase.co/auth/v1/user' => Http::response($user),
         ]);
         $credentials = ['email' => 'test@example.com', 'password' => 'secret'];
-        $this->post('/login', $credentials)->assertRedirect('/dashboard');
+        $this->post('/login', $credentials)->assertRedirect('/conferma-identita');
+        $this->post('/conferma-identita', ['identity_confirmed' => '1'])->assertRedirect('/dashboard');
         $this->get('/dashboard')->assertOk();
         $previousSession = session()->all();
         session()->invalidate();
 
-        $this->post('/login', $credentials)->assertRedirect('/dashboard');
+        $this->post('/login', $credentials)->assertRedirect('/conferma-identita');
+        $this->post('/conferma-identita', ['identity_confirmed' => '1'])->assertRedirect('/dashboard');
         $this->get('/dashboard')->assertOk();
         $currentSession = session()->all();
 
@@ -94,12 +100,13 @@ class SingleSessionTest extends TestCase
                 ->push([], 400),
             'https://project.supabase.co/auth/v1/user' => Http::response($user),
         ]);
-        $this->post('/login', ['email' => 'test@example.com', 'password' => 'secret'])->assertRedirect('/dashboard');
+        $this->post('/login', ['email' => 'test@example.com', 'password' => 'secret'])->assertRedirect('/conferma-identita');
+        $this->post('/conferma-identita', ['identity_confirmed' => '1'])->assertRedirect('/dashboard');
         $previousSession = session()->all();
         session()->invalidate();
         $this->post('/login', ['email' => 'test@example.com', 'password' => 'wrong'])->assertSessionHasErrors('email');
         session()->flush();
         $this->withSession($previousSession)->get('/dashboard')->assertOk();
-        Http::assertSentCount(3);
+        Http::assertSentCount(4);
     }
 }
