@@ -7,4 +7,42 @@
 @if($errors->any())<div class="errors" role="alert"><strong>Controlla i dati inseriti.</strong><ul>@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
 @yield('content')
 @if(!request()->routeIs('login'))</main></div>@endif
+@if(!request()->routeIs('login'))
+<div id="navigation-loading" class="navigation-loading" role="status" aria-live="polite" aria-atomic="true" hidden></div>
+<script>
+    const navigationLoading = document.getElementById('navigation-loading');
+    const navigationLinks = document.querySelectorAll('.side-nav a');
+
+    const resetNavigation = () => {
+        navigationLoading.hidden = true;
+        navigationLoading.textContent = '';
+        navigationLinks.forEach((link) => {
+            link.classList.remove('is-loading');
+            link.removeAttribute('aria-busy');
+        });
+    };
+
+    navigationLinks.forEach((link) => {
+        link.addEventListener('click', (event) => {
+            if (event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || link.target === '_blank') {
+                return;
+            }
+
+            if (link.href === window.location.href) {
+                event.preventDefault();
+                return;
+            }
+
+            resetNavigation();
+            link.classList.add('is-loading');
+            link.setAttribute('aria-busy', 'true');
+            navigationLoading.textContent = `Apertura ${link.textContent.trim()}…`;
+            navigationLoading.hidden = false;
+        });
+    });
+
+    window.addEventListener('pageshow', resetNavigation);
+    window.addEventListener('pagehide', resetNavigation);
+</script>
+@endif
 </body></html>
