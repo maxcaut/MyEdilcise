@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\AppSettings;
 use App\Telegram;
 use App\TelegramConversation;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -26,8 +27,15 @@ class ProcessTelegramUpdate implements ShouldQueue
 
     public function __construct(public int $updateId) {}
 
-    public function handle(TelegramConversation $conversation, Telegram $telegram): void
+    public function handle(TelegramConversation $conversation, Telegram $telegram, AppSettings $settings): void
     {
+        if (! $settings->telegramEnabled()) {
+            DB::table('telegram_updates')->where('id', $this->updateId)->whereNull('sent_at')->update([
+                'payload' => null, 'reply' => null, 'processed_at' => now(), 'sent_at' => now(), 'updated_at' => now(),
+            ]);
+
+            return;
+        }
         DB::transaction(function () use ($conversation): void {
             $update = DB::table('telegram_updates')->where('id', $this->updateId)->lockForUpdate()->first();
             if (! $update || $update->sent_at) {

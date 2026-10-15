@@ -106,7 +106,7 @@ class AuthController extends Controller
         }
         $response->throw();
 
-        return to_route('profile')->with('status', 'Utente creato.');
+        return to_route('settings')->with('status', 'Utente creato.');
     }
 
     public function updateUserRole(Request $request, string $id): RedirectResponse
@@ -122,7 +122,7 @@ class AuthController extends Controller
         }
         $response->throw();
 
-        return to_route('profile')->with('status', 'Ruolo utente aggiornato.');
+        return to_route('settings')->with('status', 'Ruolo utente aggiornato.');
     }
 
     public function deleteUser(Request $request, string $id): RedirectResponse
@@ -135,6 +135,6 @@ class AuthController extends Controller
         }
         $response->throw();
 
-        return to_route('profile')->with('status', 'Utente cancellato.');
+        return to_route('settings')->with('status', 'Utente cancellato.');
     }
 }

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\FileController;
+use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\TelegramController;
 use App\Http\Middleware\SupabaseSession;
 use Illuminate\Support\Facades\Route;
@@ -12,6 +13,8 @@ Route::post('/telegram/webhook', [TelegramController::class, 'webhook'])->name('
 Route::middleware(SupabaseSession::class)->group(function (): void {
     Route::view('/conferma-identita', 'confirm-identity')->name('identity.confirm');
     Route::post('/conferma-identita', [AuthController::class, 'confirmIdentity'])->name('identity.confirm.store');
+    Route::get('/impostazioni', [SettingsController::class, 'index'])->name('settings');
+    Route::put('/impostazioni', [SettingsController::class, 'update'])->name('settings.update');
     Route::get('/dashboard', [FileController::class, 'dashboard'])->name('dashboard');
     Route::get('/documenti/{id}', [FileController::class, 'show'])->whereNumber('id')->name('documents.show');
     Route::get('/documenti/{id}/file', [FileController::class, 'download'])->whereNumber('id')->name('documents.download');

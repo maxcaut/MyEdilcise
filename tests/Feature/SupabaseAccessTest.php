@@ -197,12 +197,12 @@ class SupabaseAccessTest extends TestCase
         $this->account('Super_user');
         Http::fake(['https://project.supabase.co/auth/v1/admin/users' => Http::response(['id' => 'new-user'])]);
         $this->post('/utenti', ['name' => 'Admin', 'email' => 'admin@example.com', 'password' => 'long-password-123', 'role' => 'amministratore'])
-            ->assertRedirect('/profilo');
+            ->assertRedirect('/impostazioni');
         Http::assertSent(fn ($request) => $request->url() === 'https://project.supabase.co/auth/v1/admin/users'
             && $request['app_metadata']['role'] === 'amministratore' && $request->hasHeader('apikey', 'secret-test'));
     }
 
-    public function test_super_user_can_delete_document_and_manage_users_from_profile(): void
+    public function test_super_user_can_delete_document_and_manage_users_from_settings(): void
     {
         $this->account('Super_user');
         Http::fake(['https://project.supabase.co/auth/v1/admin/users?*' => Http::response(['users' => []])]);
@@ -211,7 +211,7 @@ class SupabaseAccessTest extends TestCase
             'amount' => 100, 'uploaded_by' => '11111111-1111-4111-8111-111111111111',
             'content' => base64_encode('%PDF-sample'), 'mime_type' => 'application/pdf', 'extension' => 'pdf',
         ]);
-        $this->get('/profilo')->assertOk()->assertSee('Crea utente')->assertSee('Nessun accesso registrato.');
+        $this->get('/impostazioni')->assertOk()->assertSee('Crea utente')->assertSee('Nessun accesso registrato.');
         $this->delete('/documenti/'.$id)->assertRedirect('/dashboard');
         $this->assertDatabaseMissing('documents', ['id' => $id]);
     }
@@ -250,7 +250,7 @@ class SupabaseAccessTest extends TestCase
                 'user_metadata' => ['name' => 'Mai entrato'], 'last_sign_in_at' => null],
         ]])]);
 
-        $response = $this->get('/profilo')->assertOk()->assertSee('Accessi all’app')
+        $response = $this->get('/impostazioni')->assertOk()->assertSee('Accessi all’app')
             ->assertSeeInOrder(['second@example.com', '09/10/2026 12:15:00', 'first@example.com', '09/10/2026 10:30:00'])
             ->assertSee('<script>alert(1)</script> Rossi')->assertDontSee('<script>alert(1)</script>', false);
         $response->assertViewHas('accessedUsers', fn ($users): bool => $users->pluck('id')->values()->all() === ['second', 'first']);
@@ -267,12 +267,12 @@ class SupabaseAccessTest extends TestCase
             ->push(['users' => [$user]])
             ->push(['users' => [array_replace($user, ['last_sign_in_at' => '2026-10-09T10:01:00Z'])]])]);
 
-        $this->post('/profilo/accessi/reset')->assertRedirect('/profilo')->assertSessionHas('status', 'Visualizzazione azzerata. Compariranno gli accessi successivi al reset.');
+        $this->post('/profilo/accessi/reset')->assertRedirect('/impostazioni')->assertSessionHas('status', 'Visualizzazione azzerata. Compariranno gli accessi successivi al reset.');
 
         $this->assertSame('2026-10-09T10:00:00.000000Z', Cache::get('supabase.accesses_reset_at.11111111-1111-4111-8111-111111111111'));
-        $this->get('/profilo')->assertOk()->assertSee('Nessun accesso registrato.')->assertDontSee('09/10/2026 12:00:00')
+        $this->get('/impostazioni')->assertOk()->assertSee('Nessun accesso registrato.')->assertDontSee('09/10/2026 12:00:00')
             ->assertSee('resident@example.com')->assertViewHas('accessedUsers', fn ($users): bool => $users->isEmpty());
-        $this->get('/profilo')->assertOk()->assertSee('09/10/2026 12:01:00')->assertDontSee('Nessun accesso registrato.');
+        $this->get('/impostazioni')->assertOk()->assertSee('09/10/2026 12:01:00')->assertDontSee('Nessun accesso registrato.');
         Http::assertNotSent(fn ($request): bool => $request->method() !== 'GET');
     }
 
@@ -300,7 +300,7 @@ class SupabaseAccessTest extends TestCase
                 'id' => '11111111-1111-4111-8111-111111111111', 'email' => 'test@example.com', 'app_metadata' => ['role' => 'Super_user'],
             ]]]);
         }]);
-        $this->get('/profilo')->assertOk()->assertSee('Utenti abilitati')->assertSee('resident@example.com')
+        $this->get('/impostazioni')->assertOk()->assertSee('Utenti abilitati')->assertSee('resident@example.com')
             ->assertSee('&lt;script&gt;', false)->assertDontSee('<script>alert(1)</script>', false)
             ->assertDontSee('unknown@example.com')->assertDontSee('banned@example.com')
             ->assertSee('Il tuo account: ruolo e cancellazione protetti.')
@@ -317,7 +317,7 @@ class SupabaseAccessTest extends TestCase
         $id = '22222222-2222-4222-8222-222222222222';
         Http::fake(['https://project.supabase.co/auth/v1/admin/users/'.$id => Http::response(['id' => $id])]);
         $this->patch('/utenti/'.$id.'/ruolo', ['role' => $role, 'email' => 'unexpected@example.com'])
-            ->assertRedirect('/profilo')->assertSessionHas('status', 'Ruolo utente aggiornato.');
+            ->assertRedirect('/impostazioni')->assertSessionHas('status', 'Ruolo utente aggiornato.');
         Http::assertSent(fn ($request) => $request->method() === 'PUT'
             && $request->data() === ['app_metadata' => ['role' => $role]] && $request->hasHeader('apikey', 'secret-test'));
     }
@@ -327,7 +327,7 @@ class SupabaseAccessTest extends TestCase
         $this->account('Super_user');
         $id = '22222222-2222-4222-8222-222222222222';
         Http::fake(['https://project.supabase.co/auth/v1/admin/users/'.$id => Http::response(['id' => $id])]);
-        $this->delete('/utenti/'.$id)->assertRedirect('/profilo')->assertSessionHas('status', 'Utente cancellato.');
+        $this->delete('/utenti/'.$id)->assertRedirect('/impostazioni')->assertSessionHas('status', 'Utente cancellato.');
         Http::assertSent(fn ($request) => $request->method() === 'DELETE'
             && $request->url() === 'https://project.supabase.co/auth/v1/admin/users/'.$id && $request->hasHeader('apikey', 'secret-test'));
     }

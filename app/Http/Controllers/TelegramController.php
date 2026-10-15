@@ -2,13 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\AppSettings;
 use App\Jobs\ProcessTelegramUpdate;
-use App\Supabase;
 use App\Telegram;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
@@ -17,22 +16,14 @@ use Illuminate\View\View;
 
 class TelegramController extends Controller
 {
-    public function profile(Request $request, Telegram $telegram, Supabase $supabase): View
-    {
-        $enabledUsers = $request->user()->role === 'Super_user' ? $supabase->enabledUsers() : [];
-        $accessesResetAt = $request->user()->role === 'Super_user'
-            ? Cache::get('supabase.accesses_reset_at.'.$request->user()->id)
-            : null;
+    public function __construct(private AppSettings $settings) {}
 
+    public function profile(Request $request, Telegram $telegram): View
+    {
         return view('profile', [
-            'enabledUsers' => $enabledUsers,
-            'accessedUsers' => collect($enabledUsers)->filter(fn (array $user): bool => ! empty($user['last_sign_in_at'])
-                && ($accessesResetAt === null || Carbon::parse($user['last_sign_in_at'])->greaterThan($accessesResetAt)))->sortByDesc('last_sign_in_at'),
             'telegramConfigured' => $telegram->configured(),
+            'telegramEnabled' => $this->settings->telegramEnabled(),
             'telegramAccount' => DB::table('telegram_accounts')->where('user_id', $request->user()->id)->first(),
-            'linkedTelegramAccounts' => $request->user()->role === 'Super_user'
-                ? DB::table('telegram_accounts')->select('id', 'user_id', 'telegram_id')->whereNotNull('telegram_id')->orderBy('id')->get()
-                : collect(),
         ]);
     }
 
@@ -42,13 +33,14 @@ class TelegramController extends Controller
 
         Cache::forever('supabase.accesses_reset_at.'.$request->user()->id, now()->toISOString());
 
-        return to_route('profile')->with('status', 'Visualizzazione azzerata. Compariranno gli accessi successivi al reset.');
+        return to_route('settings')->with('status', 'Visualizzazione azzerata. Compariranno gli accessi successivi al reset.');
     }
 
     public function store(Request $request, Telegram $telegram): RedirectResponse
     {
         abort_unless(in_array($request->user()->role, ['Super_user', 'amministratore'], true), 403);
         abort_unless($telegram->configured(), 503, 'Telegram non è ancora configurato.');
+        abort_unless($this->settings->telegramEnabled(), 503, 'Telegram è disattivato dal gestore.');
         $token = Str::random(48);
         DB::table('telegram_accounts')->updateOrInsert(['user_id' => $request->user()->id], [
             'link_hash' => hash('sha256', $token), 'link_expires_at' => now()->addMinutes(10),
@@ -81,13 +73,16 @@ class TelegramController extends Controller
             DB::table('telegram_accounts')->where('id', $account->id)->delete();
         });
 
-        return to_route('profile')->with('status', 'Collegamento Telegram revocato.');
+        return to_route('settings')->with('status', 'Collegamento Telegram revocato.');
     }
 
     public function webhook(Request $request, Telegram $telegram): JsonResponse
     {
         abort_unless($telegram->configured(), 503);
         abort_unless(hash_equals(config('services.telegram.webhook_secret'), $request->header('X-Telegram-Bot-Api-Secret-Token', '')), 403);
+        if (! $this->settings->telegramEnabled()) {
+            return response()->json(['ok' => true]);
+        }
         $data = $request->validate([
             'update_id' => ['required', 'integer', 'min:0'],
             'message' => ['sometimes', 'array'],

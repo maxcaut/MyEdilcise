@@ -144,10 +144,10 @@ class TelegramTest extends TestCase
         DB::table('telegram_accounts')->insert(['user_id' => '22222222-2222-4222-8222-222222222222', 'telegram_id' => '67890']);
         DB::table('telegram_accounts')->insert(['user_id' => '33333333-3333-4333-8333-333333333333']);
 
-        $this->get('/profilo')->assertOk()->assertSee('Account collegati a Telegram')
+        $this->get('/impostazioni')->assertOk()->assertSee('Account collegati a Telegram')
             ->assertSee('Mario Rossi')->assertSee('persona@example.com')->assertSee('Telegram ID: 12345')
             ->assertSee('Telegram ID: 67890')->assertViewHas('linkedTelegramAccounts', fn ($accounts) => $accounts->count() === 2);
-        $this->delete('/profilo/telegram/'.$id)->assertRedirect('/profilo')->assertSessionHas('status', 'Collegamento Telegram revocato.');
+        $this->delete('/profilo/telegram/'.$id)->assertRedirect('/impostazioni')->assertSessionHas('status', 'Collegamento Telegram revocato.');
         $this->assertDatabaseMissing('telegram_accounts', ['id' => $id]);
         $this->assertDatabaseHas('telegram_accounts', ['telegram_id' => '67890']);
         $this->deliver(['text' => '/start '.str_repeat('a', 48)]);
@@ -165,8 +165,7 @@ class TelegramTest extends TestCase
         $this->linkedAccount();
         $id = DB::table('telegram_accounts')->value('id');
 
-        $this->get('/profilo')->assertOk()->assertDontSee('Account collegati a Telegram')
-            ->assertViewHas('linkedTelegramAccounts', fn ($accounts) => $accounts->isEmpty());
+        $this->get('/profilo')->assertOk()->assertDontSee('Account collegati a Telegram');
         $this->delete('/profilo/telegram/'.$id)->assertForbidden();
         $this->assertDatabaseHas('telegram_accounts', ['id' => $id, 'telegram_id' => '12345']);
     }
@@ -190,7 +189,7 @@ class TelegramTest extends TestCase
         $this->sessionAccount();
         Http::fake(['https://project.supabase.co/auth/v1/admin/users?*' => Http::response(['users' => []])]);
 
-        $this->get('/profilo')->assertOk()->assertSee('Nessun account collegato a Telegram.');
+        $this->get('/impostazioni')->assertOk()->assertSee('Nessun account collegato a Telegram.');
     }
 
     public function test_expired_link_does_not_connect_an_account(): void

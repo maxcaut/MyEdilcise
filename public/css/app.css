@@ -256,3 +256,12 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var
 .identity-checkbox input{flex:none;width:20px;min-height:20px;margin-top:2px;accent-color:var(--green)}
 .identity-popup button{width:100%}
 .identity-popup .text-button{margin-top:12px}
+
+.settings-toggle{display:flex;align-items:center;gap:12px;cursor:pointer}
+.profile .settings-toggle input{appearance:none;width:46px;height:26px;flex:0 0 46px;border:1px solid #ccd6d1;border-radius:20px;padding:3px;background:#e2e8e5;cursor:pointer}
+.settings-toggle input::before{content:'';display:block;width:18px;height:18px;border-radius:50%;background:white;box-shadow:0 1px 3px #20332d33;transition:transform .15s}
+.profile .settings-toggle input:checked{background:var(--green);border-color:var(--green)}
+.settings-toggle input:checked::before{transform:translateX(20px)}
+@media(prefers-reduced-motion:reduce){.settings-toggle input::before{transition:none}}
+
+@media(max-width:760px){.side-nav-superuser{grid-template-columns:repeat(3,minmax(0,1fr))}}
