@@ -36,14 +36,27 @@ class SupabaseSession
             $tokens = $request->session()->get('supabase');
         }
 
-        $response = $this->supabase->client($tokens['access_token'])->get('/user');
-        if ($response->status() === 401 || $response->status() === 403) {
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
+        $verified = $request->session()->get('supabase_verified_user');
+        $canReuseUser = $request->isMethod('GET') && $request->routeIs('dashboard', 'profile', 'documents.show');
+        $data = $verified['data'] ?? null;
+        $revision = $data ? Cache::get('supabase.user_revision.'.$data['id']) : null;
+        if (! $canReuseUser || ! $data || ($verified['expires_at'] ?? 0) <= now()->timestamp
+            || ($verified['token_hash'] ?? '') !== hash('sha256', $tokens['access_token'])
+            || ($verified['revision'] ?? null) !== $revision) {
+            $response = $this->supabase->client($tokens['access_token'])->get('/user');
+            if ($response->status() === 401 || $response->status() === 403) {
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
 
-            return redirect()->route('login');
+                return redirect()->route('login');
+            }
+            $data = $response->throw()->json();
+            $request->session()->put('supabase_verified_user', [
+                'data' => $data, 'expires_at' => now()->timestamp + 20,
+                'token_hash' => hash('sha256', $tokens['access_token']),
+                'revision' => Cache::get('supabase.user_revision.'.$data['id']),
+            ]);
         }
-        $data = $response->throw()->json();
         $sessionToken = $request->session()->get('supabase_session_token');
         $cacheKey = 'supabase.active_session.'.$data['id'];
         if (! $sessionToken) {

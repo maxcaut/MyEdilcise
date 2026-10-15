@@ -167,4 +167,25 @@ class PrototypeTest extends TestCase
         $this->post('/profilo', ['name' => 'Mario', 'surname' => 'Rossi', 'email' => 'mario@example.com'])
             ->assertRedirect('/profilo')->assertSessionHas('status', 'Profilo aggiornato. Se hai cambiato email, conferma i messaggi inviati da Supabase.');
     }
+
+    public function test_document_pages_preserve_filters_and_monthly_total(): void
+    {
+        for ($number = 1; $number <= 26; $number++) {
+            DB::table('documents')->insert([
+                'title' => sprintf('Documento %02d', $number), 'supplier' => 'Fornitore',
+                'category' => 'Altro', 'amount' => 10, 'date' => '2026-10-15',
+                'uploaded_by' => '11111111-1111-4111-8111-111111111111',
+            ]);
+        }
+
+        $this->get('/dashboard?month=2026-10&q=Documento&category=Altro')
+            ->assertOk()->assertSee('Documento 26')->assertDontSee('Documento 01')
+            ->assertViewHas('monthlyTotal', 460)
+            ->assertViewHas('documentPages', fn ($pages): bool => $pages->total() === 26 && $pages->count() === 25)
+            ->assertSee('category=Altro')->assertSee('page=2');
+        $this->get('/dashboard?month=2026-10&q=Documento&category=Altro&page=2')
+            ->assertOk()->assertSee('Documento 01')->assertDontSee('Documento 26')
+            ->assertViewHas('latestDocumentDate', '2026-10-15')
+            ->assertViewHas('monthlyTotal', 460);
+    }
 }

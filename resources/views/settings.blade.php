@@ -4,7 +4,7 @@
 <section id="settings">
 <div class="eyebrow">Amministrazione</div><h1>Impostazioni.</h1><p>Personalizza l’app e gestisci gli accessi al condominio.</p>
 <div class="profile">
-<form class="card" method="POST" action="{{ route('settings.update') }}">
+<form class="card" method="POST" action="{{ route('settings.update') }}" data-loading-label="Salvataggio impostazioni…">
 @csrf @method('PUT')
 <h2>Identità del condominio</h2><p class="subtle">Le modifiche si applicano a tutti gli utenti.</p>
 <div class="fields">

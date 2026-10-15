@@ -24,6 +24,8 @@ class AuthController extends Controller
         $response->throw();
         $userId = $response->json('user.id');
         abort_unless(is_string($userId) && $userId !== '', 502, 'Risposta Supabase non valida.');
+        $this->supabase->invalidateUsers($userId);
+        $request->session()->forget('supabase_verified_user');
         $request->session()->regenerate();
         $this->supabase->storeSession($response->json());
         $sessionToken = (string) Str::uuid();
@@ -69,6 +71,8 @@ class AuthController extends Controller
         $this->supabase->client($request->session()->get('supabase.access_token'))
             ->put('/user', ['email' => $email, 'data' => $data])->throw();
 
+        $this->supabase->invalidateUsers($request->user()->id);
+
         return to_route('profile')->with('status', 'Profilo aggiornato. Se hai cambiato email, conferma i messaggi inviati da Supabase.');
     }
 
@@ -84,6 +88,8 @@ class AuthController extends Controller
             throw ValidationException::withMessages(['current_password' => 'Password attuale non valida o nuova password non accettata.']);
         }
         $response->throw();
+
+        $this->supabase->invalidateUsers($request->user()->id);
 
         return to_route('profile')->with('status', 'Password aggiornata.');
     }
@@ -106,6 +112,8 @@ class AuthController extends Controller
         }
         $response->throw();
 
+        $this->supabase->invalidateUsers();
+
         return to_route('settings')->with('status', 'Utente creato.');
     }
 
@@ -122,6 +130,8 @@ class AuthController extends Controller
         }
         $response->throw();
 
+        $this->supabase->invalidateUsers($id);
+
         return to_route('settings')->with('status', 'Ruolo utente aggiornato.');
     }
 
@@ -134,6 +144,8 @@ class AuthController extends Controller
             throw ValidationException::withMessages(['user' => 'Utente non cancellato. Verifica che l’utente esista e riprova.']);
         }
         $response->throw();
+
+        $this->supabase->invalidateUsers($id);
 
         return to_route('settings')->with('status', 'Utente cancellato.');
     }

@@ -7,22 +7,24 @@
 @if($errors->any())<div class="errors" role="alert"><strong>Controlla i dati inseriti.</strong><ul>@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
 @yield('content')
 @if(!request()->routeIs('login', 'identity.confirm'))</main></div>@endif
-@if(!request()->routeIs('login', 'identity.confirm'))
+@if(!request()->routeIs('login'))
 <div id="navigation-loading" class="navigation-loading" role="status" aria-live="polite" aria-atomic="true" hidden>
     <div class="navigation-loading-panel">
         <span class="navigation-loading-spinner" aria-hidden="true"></span>
         <strong id="navigation-loading-label"></strong>
-        <span class="subtle">Attendi un momento, stiamo aprendo la schermata.</span>
+        <span class="subtle">Attendi un momento, operazione in corso.</span>
     </div>
 </div>
 <script>
     const navigationLoading = document.getElementById('navigation-loading');
     const navigationLoadingLabel = document.getElementById('navigation-loading-label');
     const navigationLinks = document.querySelectorAll('.side-nav a');
+    const loadingForms = document.querySelectorAll('form[data-loading-label]');
 
     const resetNavigation = () => {
         navigationLoading.hidden = true;
         navigationLoadingLabel.textContent = '';
+        loadingForms.forEach((form) => form.removeAttribute('aria-busy'));
         navigationLinks.forEach((link) => {
             link.classList.remove('is-loading');
             link.removeAttribute('aria-busy');
@@ -44,6 +46,24 @@
             link.classList.add('is-loading');
             link.setAttribute('aria-busy', 'true');
             navigationLoadingLabel.textContent = `Apertura ${link.textContent.trim()}…`;
+            navigationLoading.hidden = false;
+        });
+    });
+
+    loadingForms.forEach((form) => {
+        form.addEventListener('submit', (event) => {
+            if (event.defaultPrevented) {
+                return;
+            }
+
+            if (form.getAttribute('aria-busy') === 'true') {
+                event.preventDefault();
+                return;
+            }
+
+            resetNavigation();
+            form.setAttribute('aria-busy', 'true');
+            navigationLoadingLabel.textContent = form.dataset.loadingLabel;
             navigationLoading.hidden = false;
         });
     });

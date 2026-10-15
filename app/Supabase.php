@@ -4,7 +4,9 @@ namespace App;
 
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 
 class Supabase
 {
@@ -35,6 +37,20 @@ class Supabase
 
     /** @return list<array<string, mixed>> */
     public function enabledUsers(): array
+    {
+        return Cache::remember('supabase.enabled_users', 20, fn (): array => $this->fetchEnabledUsers());
+    }
+
+    public function invalidateUsers(?string $userId = null): void
+    {
+        Cache::forget('supabase.enabled_users');
+        if ($userId !== null) {
+            Cache::put('supabase.user_revision.'.$userId, (string) Str::uuid(), 60);
+        }
+    }
+
+    /** @return list<array<string, mixed>> */
+    private function fetchEnabledUsers(): array
     {
         $users = [];
         $page = 1;

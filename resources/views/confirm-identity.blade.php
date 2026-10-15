@@ -8,7 +8,7 @@
             <div class="brand">@include('components.brand')</div>
             <h1 id="identity-title">Sei proprio tu?</h1>
             <p id="identity-description">Hai effettuato l’accesso come <strong>{{ trim($account->name.' '.$account->surname) ?: $account->email }}</strong> ({{ $account->email }}). Per proteggere la tua privacy e i dati del condominio, conferma di essere il titolare di questo account prima di continuare.</p>
-            <form method="POST" action="{{ route('identity.confirm.store') }}">
+            <form method="POST" action="{{ route('identity.confirm.store') }}" data-loading-label="Accesso in corso…">
                 @csrf
                 <label class="identity-checkbox" for="identity-confirmed">
                     <input id="identity-confirmed" name="identity_confirmed" type="checkbox" value="1" required autofocus>

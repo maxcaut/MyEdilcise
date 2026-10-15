@@ -272,6 +272,7 @@ class SupabaseAccessTest extends TestCase
         $this->assertSame('2026-10-09T10:00:00.000000Z', Cache::get('supabase.accesses_reset_at.11111111-1111-4111-8111-111111111111'));
         $this->get('/impostazioni')->assertOk()->assertSee('Nessun accesso registrato.')->assertDontSee('09/10/2026 12:00:00')
             ->assertSee('resident@example.com')->assertViewHas('accessedUsers', fn ($users): bool => $users->isEmpty());
+        $this->travel(21)->seconds();
         $this->get('/impostazioni')->assertOk()->assertSee('09/10/2026 12:01:00')->assertDontSee('Nessun accesso registrato.');
         Http::assertNotSent(fn ($request): bool => $request->method() !== 'GET');
     }

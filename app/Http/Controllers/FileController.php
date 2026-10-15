@@ -38,11 +38,13 @@ class FileController extends Controller
         if ($category = $filters['category'] ?? '') {
             $query->where('category', $category);
         }
-        $documents = $query->orderByDesc('date')->orderByDesc('id')->get()->keyBy('id')
+        $latestDocumentDate = (clone $query)->max('date');
+        $documentPages = $query->orderByDesc('date')->orderByDesc('id')->paginate(25)->withQueryString();
+        $documents = $documentPages->getCollection()->keyBy('id')
             ->map(fn (object $document): array => (array) $document)->all();
         $categories = DB::table('documents')->whereNotNull('category')->distinct()->orderBy('category')->pluck('category')->all();
 
-        return view('dashboard', compact('documents', 'categories', 'selectedMonth', 'monthLabel', 'monthlyTotal', 'monthNavigation'));
+        return view('dashboard', compact('documents', 'categories', 'selectedMonth', 'monthLabel', 'monthlyTotal', 'monthNavigation', 'documentPages', 'latestDocumentDate'));
     }
 
     public function show(int $id): View

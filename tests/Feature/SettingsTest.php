@@ -172,4 +172,29 @@ class SettingsTest extends TestCase
             ->assertSessionHasErrors('telegram_messages');
         $this->assertDatabaseCount('app_settings', 0);
     }
+
+    public function test_saving_settings_refreshes_cached_values_and_preserves_other_fields(): void
+    {
+        $settings = app(AppSettings::class);
+        $settings->save(['name' => 'Prima', 'city' => 'Napoli']);
+        $this->assertSame('Prima', $settings->values()['name']);
+
+        $settings->save(['name' => 'Dopo']);
+
+        $this->assertSame(['city' => 'Napoli', 'name' => 'Dopo'], collect($settings->values())->sortKeys()->all());
+        $this->assertDatabaseCount('app_settings', 2);
+    }
+
+    public function test_settings_reuse_user_list_until_expiry(): void
+    {
+        $this->account();
+        $this->freezeTime();
+        $this->get('/impostazioni')->assertOk();
+        $this->get('/impostazioni')->assertOk();
+        Http::assertSentCount(3);
+
+        $this->travel(21)->seconds();
+        $this->get('/impostazioni')->assertOk();
+        Http::assertSentCount(5);
+    }
 }

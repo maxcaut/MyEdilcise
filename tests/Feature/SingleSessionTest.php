@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Supabase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -107,6 +108,39 @@ class SingleSessionTest extends TestCase
         $this->post('/login', ['email' => 'test@example.com', 'password' => 'wrong'])->assertSessionHasErrors('email');
         session()->flush();
         $this->withSession($previousSession)->get('/dashboard')->assertOk();
-        Http::assertSentCount(4);
+        Http::assertSentCount(3);
+    }
+
+    public function test_navigation_reuses_user_until_expiry_and_writes_always_check_again(): void
+    {
+        $this->freezeTime();
+        Http::fake(['https://project.supabase.co/auth/v1/user' => Http::sequence()
+            ->push(['id' => 'user-one', 'email' => 'test@example.com', 'app_metadata' => ['role' => 'condomino']])
+            ->push(['id' => 'user-one', 'email' => 'test@example.com', 'app_metadata' => ['role' => 'condomino']])
+            ->push([], 401)]);
+        $this->withSession(['supabase' => ['access_token' => 'access', 'refresh_token' => 'refresh', 'expires_at' => time() + 3600]]);
+
+        $this->get('/dashboard')->assertOk();
+        $this->get('/dashboard')->assertOk();
+        Http::assertSentCount(1);
+        $this->travel(21)->seconds();
+        $this->get('/dashboard')->assertOk();
+        Http::assertSentCount(2);
+        $this->post('/documenti')->assertRedirect('/')->assertSessionMissing('supabase');
+        Http::assertSentCount(3);
+    }
+
+    public function test_user_invalidation_rejects_cached_access_immediately(): void
+    {
+        Http::fake(['https://project.supabase.co/auth/v1/user' => Http::sequence()
+            ->push(['id' => 'user-one', 'email' => 'test@example.com', 'app_metadata' => ['role' => 'condomino']])
+            ->push([], 401)]);
+        $this->withSession(['supabase' => ['access_token' => 'access', 'refresh_token' => 'refresh', 'expires_at' => time() + 3600]]);
+        $this->get('/dashboard')->assertOk();
+
+        app(Supabase::class)->invalidateUsers('user-one');
+
+        $this->get('/dashboard')->assertRedirect('/')->assertSessionMissing('supabase');
+        Http::assertSentCount(2);
     }
 }
