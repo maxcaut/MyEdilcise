@@ -10,6 +10,8 @@ use RuntimeException;
 
 class Telegram
 {
+    public function __construct(private TelegramMessages $messages) {}
+
     public const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
     public function configured(): bool
@@ -53,7 +55,7 @@ class Telegram
         $file = $this->call('getFile', ['file_id' => $fileId])['result'] ?? [];
         $path = $file['file_path'] ?? '';
         if (($file['file_size'] ?? 0) > self::MAX_FILE_SIZE) {
-            throw ValidationException::withMessages(['file' => 'Il file supera il limite di 10 MB.']);
+            throw ValidationException::withMessages(['file' => $this->messages->text('file_too_large')]);
         }
         if (! is_string($path) || ! preg_match('~^[a-zA-Z0-9_/-]+\.[a-zA-Z0-9]+$~D', $path) || str_contains($path, '..')) {
             throw new RuntimeException('Percorso del file Telegram non valido.');
@@ -75,12 +77,12 @@ class Telegram
             throw new RuntimeException('Download Telegram non disponibile. Riprova tra poco.');
         }
         if (strlen($content) > self::MAX_FILE_SIZE) {
-            throw ValidationException::withMessages(['file' => 'Il file supera il limite di 10 MB.']);
+            throw ValidationException::withMessages(['file' => $this->messages->text('file_too_large')]);
         }
         $mime = (new \finfo(FILEINFO_MIME_TYPE))->buffer($content);
         $extension = ['application/pdf' => 'pdf', 'image/jpeg' => 'jpg', 'image/png' => 'png'][$mime] ?? null;
         if ($extension === null) {
-            throw ValidationException::withMessages(['file' => 'Invia un PDF, JPG o PNG valido, fino a 10 MB.']);
+            throw ValidationException::withMessages(['file' => $this->messages->text('invalid_file')]);
         }
 
         return ['content' => base64_encode($content), 'mime_type' => $mime, 'extension' => $extension];

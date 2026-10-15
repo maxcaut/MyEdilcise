@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\AppSettings;
 use App\Supabase;
 use App\Telegram;
+use App\TelegramMessages;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -27,6 +28,8 @@ class SettingsController extends Controller
             'linkedTelegramAccounts' => DB::table('telegram_accounts')->select('id', 'user_id', 'telegram_id')->whereNotNull('telegram_id')->orderBy('id')->get(),
             'telegramConfigured' => $telegram->configured(),
             'telegramEnabled' => $settings->telegramEnabled(),
+            'telegramMessageDefinitions' => TelegramMessages::DEFINITIONS,
+            'savedSettings' => $settings->values(),
         ]);
     }
 
@@ -40,12 +43,20 @@ class SettingsController extends Controller
             'logo_url' => $imagePathRules,
             'favicon_url' => $imagePathRules,
             'telegram_enabled' => ['required', 'boolean'],
+            'telegram_messages' => ['sometimes', 'array:'.implode(',', array_keys(TelegramMessages::DEFINITIONS))],
+            'telegram_messages.*' => ['nullable', 'string', 'max:1500'],
         ], [
+            'telegram_messages.*.max' => 'Ogni messaggio Telegram può contenere al massimo 1500 caratteri.',
+            'telegram_messages.*.string' => 'Inserisci un testo valido per il messaggio Telegram.',
             'name.required' => 'Inserisci il nome del condominio.',
             'logo_url.regex' => 'Inserisci un URL http/https o un percorso immagine valido per il logo.',
             'favicon_url.regex' => 'Inserisci un URL http/https o un percorso immagine valido per la favicon.',
         ]);
         $data['telegram_enabled'] = $request->boolean('telegram_enabled') ? '1' : '0';
+        foreach ($data['telegram_messages'] ?? [] as $key => $value) {
+            $data['telegram_message_'.$key] = $value;
+        }
+        unset($data['telegram_messages']);
         $settings->save($data);
 
         return to_route('settings')->with('status', 'Impostazioni aggiornate.');

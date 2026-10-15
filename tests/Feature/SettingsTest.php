@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\AppSettings;
 use App\Jobs\ProcessTelegramUpdate;
+use App\TelegramMessages;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
@@ -124,5 +125,51 @@ class SettingsTest extends TestCase
             'text' => 'ciao', 'chat' => ['id' => 12345, 'type' => 'private'], 'from' => ['id' => 12345],
         ]], ['X-Telegram-Bot-Api-Secret-Token' => str_repeat('s', 32)])->assertOk();
         Queue::assertPushed(ProcessTelegramUpdate::class);
+    }
+
+    public function test_super_user_saves_messages_and_settings_escape_the_custom_text(): void
+    {
+        $this->account();
+        $custom = '</textarea><script>alert(1)</script> Benvenuto su {app_name}';
+        $this->put('/impostazioni', $this->values() + ['telegram_messages' => ['not_linked' => $custom]])
+            ->assertRedirect('/impostazioni');
+        $this->assertDatabaseHas('app_settings', ['key' => 'telegram_message_not_linked', 'value' => $custom]);
+        $this->get('/impostazioni')->assertOk()->assertSee('Messaggi Telegram')->assertSee($custom)
+            ->assertDontSee('</textarea><script>alert(1)</script>', false);
+    }
+
+    public function test_empty_message_restores_default_without_resetting_other_custom_messages(): void
+    {
+        $this->account();
+        (new AppSettings)->save(['telegram_message_not_linked' => 'Personalizzato', 'telegram_message_cancelled' => 'Annullato!']);
+        $this->put('/impostazioni', $this->values() + ['telegram_messages' => ['not_linked' => '']])->assertRedirect('/impostazioni');
+        config(['app.name' => 'Portale Aurora']);
+        $this->assertSame('Collega prima Telegram dal tuo profilo Portale Aurora.', app(TelegramMessages::class)->text('not_linked'));
+        $this->assertDatabaseHas('app_settings', ['key' => 'telegram_message_cancelled', 'value' => 'Annullato!']);
+    }
+
+    #[TestWith(['amministratore'])]
+    #[TestWith(['condomino'])]
+    public function test_other_roles_cannot_save_telegram_messages(string $role): void
+    {
+        $this->account($role);
+        $this->put('/impostazioni', $this->values() + ['telegram_messages' => ['linked' => 'Modificato']])->assertForbidden();
+        $this->assertDatabaseCount('app_settings', 0);
+    }
+
+    public function test_oversized_messages_are_rejected_without_changing_settings(): void
+    {
+        $this->account();
+        $this->put('/impostazioni', $this->values() + ['telegram_messages' => ['linked' => str_repeat('a', 1501)]])
+            ->assertSessionHasErrors(['telegram_messages.linked' => 'Ogni messaggio Telegram può contenere al massimo 1500 caratteri.']);
+        $this->assertDatabaseCount('app_settings', 0);
+    }
+
+    public function test_unknown_message_keys_cannot_override_other_settings(): void
+    {
+        $this->account();
+        $this->put('/impostazioni', $this->values() + ['telegram_messages' => ['telegram_enabled' => '1']])
+            ->assertSessionHasErrors('telegram_messages');
+        $this->assertDatabaseCount('app_settings', 0);
     }
 }

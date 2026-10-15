@@ -265,3 +265,10 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var
 @media(prefers-reduced-motion:reduce){.settings-toggle input::before{transition:none}}
 
 @media(max-width:760px){.side-nav-superuser{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+.telegram-message-settings{min-width:0;margin-top:16px}
+.telegram-message-settings>summary{cursor:pointer;min-height:44px}
+.telegram-message-settings>summary h2{display:inline}
+.telegram-message-settings[open]>summary{margin-bottom:16px}
+.telegram-message-settings textarea{display:block;width:100%;max-width:100%;min-height:90px;resize:vertical;padding:11px 13px;border:1px solid #ccd6d1;border-radius:8px;background:white;color:var(--ink);font:inherit}
+.telegram-message-settings textarea:focus-visible{outline:2px solid var(--green);outline-offset:4px;border-color:var(--green)}

@@ -10,7 +10,7 @@ use stdClass;
 
 class TelegramConversation
 {
-    public function __construct(private Telegram $telegram, private Supabase $supabase) {}
+    public function __construct(private Telegram $telegram, private Supabase $supabase, private TelegramMessages $messages) {}
 
     /** @param array<string, mixed> $message
      * @return array{text: string, markup?: array<string, mixed>}
@@ -24,17 +24,17 @@ class TelegramConversation
         }
         $account = DB::table('telegram_accounts')->where('telegram_id', $telegramId)->lockForUpdate()->first();
         if (! $account) {
-            return ['text' => 'Collega prima Telegram dal tuo profilo '.config('app.name').'.'];
+            return ['text' => $this->messages->text('not_linked')];
         }
         if (! $this->authorized($account->user_id)) {
             DB::table('telegram_accounts')->where('id', $account->id)->update(['draft' => null, 'draft_expires_at' => null]);
 
-            return ['text' => 'Il tuo account non è autorizzato a caricare documenti.'];
+            return ['text' => $this->messages->text('unauthorized')];
         }
         if (in_array(mb_strtolower($text), ['/annulla', 'annulla'], true)) {
             $this->saveDraft($account, null);
 
-            return ['text' => 'Caricamento annullato. Puoi inviare un nuovo documento.'];
+            return ['text' => $this->messages->text('cancelled')];
         }
         $draft = $account->draft && $account->draft_expires_at > now()->toDateTimeString()
             ? json_decode(Crypt::decryptString($account->draft), true, flags: JSON_THROW_ON_ERROR) : null;
@@ -45,10 +45,10 @@ class TelegramConversation
         $file = $message['document'] ?? (! empty($message['photo']) ? end($message['photo']) : null);
         if ($file) {
             if ($draft) {
-                return ['text' => 'Completa il documento in corso oppure scrivi /annulla prima di inviarne un altro.'];
+                return ['text' => $this->messages->text('draft_pending')];
             }
             if (($file['file_size'] ?? 0) > Telegram::MAX_FILE_SIZE) {
-                return ['text' => 'Il file supera il limite di 10 MB.'];
+                return ['text' => $this->messages->text('file_too_large')];
             }
             $draft = ['file' => $this->telegram->download($file['file_id']), 'data' => $this->caption($message['caption'] ?? '')];
             if (! isset($draft['data']['title']) && isset($file['file_name'])) {
@@ -73,11 +73,11 @@ class TelegramConversation
                 ]);
                 $this->saveDraft($account, null);
 
-                return ['text' => 'Documento caricato su '.config('app.name').' ✅'."\n".route('documents.show', ['id' => $id])];
+                return ['text' => $this->messages->text('uploaded')."\n".route('documents.show', ['id' => $id])];
             }
             $draft['data'][$field] = $this->validateField($field, $text);
         } else {
-            return ['text' => "Invia un PDF, JPG o PNG fino a 10 MB.\nPuoi aggiungere una didascalia, una voce per riga:\nTitolo: Fattura ottobre\nFornitore: Rossi Materiali\nData: 08/10/2026\nImporto: 125,50\nCategoria: Manutenzione\n\nTi chiederò i dati mancanti. /annulla interrompe il caricamento."];
+            return ['text' => $this->messages->text('instructions')];
         }
         $this->saveDraft($account, $draft);
         $field = $this->nextField($draft['data']);
@@ -86,11 +86,11 @@ class TelegramConversation
         }
 
         return ['text' => ($errors ? implode("\n", $errors)."\n\n" : '').match ($field) {
-            'title' => 'Qual è il titolo del documento?',
-            'supplier' => 'Chi è il fornitore?',
-            'date' => 'Qual è la data del documento? Scrivi GG/MM/AAAA.',
-            'amount' => 'Qual è l’importo in euro? Esempio: 125,50.',
-            'category' => 'Qual è la categoria? Scrivi /salta per lasciarla vuota.',
+            'title' => $this->messages->text('ask_title'),
+            'supplier' => $this->messages->text('ask_supplier'),
+            'date' => $this->messages->text('ask_date'),
+            'amount' => $this->messages->text('ask_amount'),
+            'category' => $this->messages->text('ask_category'),
         }];
     }
 
@@ -99,20 +99,20 @@ class TelegramConversation
     {
         $account = DB::table('telegram_accounts')->where('link_hash', hash('sha256', $token))->lockForUpdate()->first();
         if (! $account || ! $account->link_expires_at || $account->link_expires_at <= now()->toDateTimeString()) {
-            return ['text' => 'Collegamento scaduto o già utilizzato. Generane uno nuovo dal tuo profilo '.config('app.name').'.'];
+            return ['text' => $this->messages->text('expired_link')];
         }
         if (! $this->authorized($account->user_id)) {
-            return ['text' => 'Il tuo account non è autorizzato a caricare documenti.'];
+            return ['text' => $this->messages->text('unauthorized')];
         }
         if (DB::table('telegram_accounts')->where('telegram_id', $telegramId)->where('id', '!=', $account->id)->exists()) {
-            return ['text' => 'Questo account Telegram è già collegato. Scollegalo dal profilo precedente prima di continuare.'];
+            return ['text' => $this->messages->text('already_linked')];
         }
         DB::table('telegram_accounts')->where('id', $account->id)->update([
             'telegram_id' => $telegramId, 'link_hash' => null, 'link_expires_at' => null,
             'draft' => null, 'draft_expires_at' => null, 'updated_at' => now(),
         ]);
 
-        return ['text' => 'Telegram collegato a '.config('app.name').' ✅ Invia un PDF, JPG o PNG fino a 10 MB per iniziare.'];
+        return ['text' => $this->messages->text('linked')];
     }
 
     private function authorized(string $userId): bool
@@ -154,7 +154,7 @@ class TelegramConversation
             $value = trim(str_replace('€', '', $value));
             if (str_contains($value, ',')) {
                 if (! preg_match('/^(?:\d+|\d{1,3}(?:\.\d{3})+),\d{1,2}$/D', $value)) {
-                    throw ValidationException::withMessages(['amount' => 'Importo non valido. Scrivi ad esempio 125,50.']);
+                    throw ValidationException::withMessages(['amount' => $this->messages->text('invalid_amount_format')]);
                 }
                 $value = str_replace(',', '.', str_replace('.', '', $value));
             }
@@ -171,11 +171,11 @@ class TelegramConversation
         $validator = Validator::make([$field => $value], [$field => $rules]);
         if ($validator->fails()) {
             throw ValidationException::withMessages([$field => match ($field) {
-                'title' => 'Scrivi un titolo da 1 a 150 caratteri.',
-                'supplier' => 'Scrivi un fornitore da 1 a 150 caratteri.',
-                'date' => 'Data non valida. Scrivi una data reale nel formato GG/MM/AAAA.',
-                'amount' => 'Importo non valido. Scrivi un valore da 0 a 99999999,99 con al massimo due decimali.',
-                'category' => 'Scrivi una categoria fino a 50 caratteri oppure /salta.',
+                'title' => $this->messages->text('invalid_title'),
+                'supplier' => $this->messages->text('invalid_supplier'),
+                'date' => $this->messages->text('invalid_date'),
+                'amount' => $this->messages->text('invalid_amount'),
+                'category' => $this->messages->text('invalid_category'),
             }]);
         }
 
@@ -209,7 +209,7 @@ class TelegramConversation
     private function summary(array $data): array
     {
         return [
-            'text' => "Controlla il documento:\nTitolo: {$data['title']}\nFornitore: {$data['supplier']}\nData: {$data['date']}\nImporto: {$data['amount']} €\nCategoria: ".($data['category'] ?? '—')."\n\nPremi Conferma per caricarlo oppure Annulla.",
+            'text' => $this->messages->text('summary_heading')."\nTitolo: {$data['title']}\nFornitore: {$data['supplier']}\nData: {$data['date']}\nImporto: {$data['amount']} €\nCategoria: ".($data['category'] ?? '—')."\n\n".$this->messages->text('summary_footer'),
             'markup' => ['keyboard' => [[['text' => 'Conferma'], ['text' => 'Annulla']]], 'resize_keyboard' => true, 'one_time_keyboard' => true],
         ];
     }

@@ -19,6 +19,15 @@
 <label class="settings-toggle" for="telegram-enabled"><input id="telegram-enabled" type="checkbox" role="switch" name="telegram_enabled" value="1" @checked(old('telegram_enabled', $telegramEnabled)) aria-describedby="telegram-help"><span>Abilita Telegram</span></label>
 <p id="telegram-help" class="subtle">Disattivando Telegram si bloccano nuovi collegamenti e caricamenti dal bot per tutti. Gli account collegati restano salvati e torneranno utilizzabili alla riattivazione.</p>
 @if(!$telegramConfigured)<p class="subtle">Il bot non è ancora configurato: l’attivazione richiede anche la configurazione del servizio.</p>@endif
+<details class="telegram-message-settings profile-disclosure">
+<summary><h2>Messaggi Telegram</h2></summary>
+<p class="subtle">Personalizza i testi inviati dal bot. Usa {app_name} per inserire il nome dell’app. Lascia vuoto un campo per ripristinare il testo predefinito al salvataggio.</p>
+<p class="subtle">Il riepilogo dei dati, il link al documento e i pulsanti Conferma/Annulla vengono aggiunti dall’app. Mantieni corrette le istruzioni sui comandi /annulla e /salta e sui formati accettati.</p>
+@foreach($telegramMessageDefinitions as $messageKey => $definition)
+<label for="telegram-message-{{ $messageKey }}">{{ $definition['label'] }}</label>
+<textarea id="telegram-message-{{ $messageKey }}" name="telegram_messages[{{ $messageKey }}]" rows="3" maxlength="1500">{{ old('telegram_messages.'.$messageKey, $savedSettings['telegram_message_'.$messageKey] ?? $definition['default']) }}</textarea>
+@endforeach
+</details>
 <footer><span class="subtle">Le impostazioni vengono salvate per tutta l’app.</span><button type="submit">Salva impostazioni</button></footer>
 </form>
 <details class="card user-management profile-disclosure" aria-labelledby="accesses-heading">

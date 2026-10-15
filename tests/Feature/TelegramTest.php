@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\AppSettings;
 use App\Jobs\ProcessTelegramUpdate;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Factory;
@@ -486,5 +487,36 @@ class TelegramTest extends TestCase
         $this->artisan('telegram:setup')->assertFailed();
 
         Http::assertNothingSent();
+    }
+
+    public function test_bot_sends_custom_text_with_app_name_and_reads_changes_without_restarting(): void
+    {
+        $this->fakeNetwork();
+        config(['app.name' => 'Portale Aurora']);
+        (new AppSettings)->save(['telegram_message_not_linked' => 'Benvenuto su {app_name}! Collega il tuo profilo.']);
+        $this->deliver(['text' => '/start']);
+        $this->assertReplyContains('Benvenuto su Portale Aurora! Collega il tuo profilo.');
+        (new AppSettings)->save(['telegram_message_not_linked' => 'Nuovo messaggio']);
+        $this->deliver(['text' => '/start']);
+        $this->assertReplyContains('Nuovo messaggio');
+    }
+
+    public function test_custom_summary_preserves_document_data_buttons_and_download_link(): void
+    {
+        $this->fakeNetwork();
+        $this->linkedAccount();
+        (new AppSettings)->save([
+            'telegram_message_summary_heading' => 'Verifica i dati:',
+            'telegram_message_summary_footer' => 'Confermi?',
+            'telegram_message_uploaded' => 'Salvato!',
+        ]);
+        $this->deliver($this->document("Fornitore: Rossi\nData: 08/10/2026\nImporto: 10\nCategoria: Spese"));
+        $this->assertReplyContains('Verifica i dati:');
+        $this->assertReplyContains('Fornitore: Rossi');
+        $this->assertReplyContains('Confermi?');
+        Http::assertSent(fn ($request) => str_ends_with($request->url(), '/sendMessage')
+            && ($request['reply_markup']['keyboard'][0][0]['text'] ?? null) === 'Conferma');
+        $this->deliver(['text' => 'Conferma']);
+        $this->assertReplyContains('Salvato!'."\n".route('documents.show', ['id' => DB::table('documents')->value('id')]));
     }
 }
